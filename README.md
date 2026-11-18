@@ -8,6 +8,15 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
 
 *[English below](#english).*
 
+<p align="center">
+  <img src="docs/images/alertes.png" alt="Page OrbitDMD : les alertes du panneau" width="49%">
+  <img src="docs/images/gif.png" alt="Étape 1 : choisir la GIF parmi les vignettes animées" width="49%">
+</p>
+<p align="center">
+  <img src="docs/images/message.png" alt="Étape 3 : le message, avec l'aperçu" width="49%">
+  <img src="docs/images/options.png" alt="Étape 4 : options, dont l'alerte prioritaire" width="49%">
+</p>
+
 ## Ce qu'elle apporte
 
 - **Détection automatique** : le panneau apparaît tout seul dans *Paramètres → Appareils et services*
