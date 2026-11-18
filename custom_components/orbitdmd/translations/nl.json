@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Een OrbitDMD-paneel koppelen",
-        "description": "Adres van het paneel (zoals in je browser, bijvoorbeeld orbitdmd.local of 192.168.0.152) en het wachtwoord van de webpagina.",
+        "description": "Adres van het paneel (zoals in je browser, bijvoorbeeld orbitdmd.local of 192.168.1.50) en het wachtwoord van de webpagina.",
         "data": {
           "host": "Adres van het paneel",
           "password": "Wachtwoord van de webpagina"

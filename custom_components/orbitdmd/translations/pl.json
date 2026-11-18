@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Połącz panel OrbitDMD",
-        "description": "Adres panelu (jak w przeglądarce, np. orbitdmd.local lub 192.168.0.152) i hasło jego strony WWW.",
+        "description": "Adres panelu (jak w przeglądarce, np. orbitdmd.local lub 192.168.1.50) i hasło jego strony WWW.",
         "data": {
           "host": "Adres panelu",
           "password": "Hasło strony WWW"

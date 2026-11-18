@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Relier un panneau OrbitDMD",
-        "description": "Adresse du panneau (comme dans votre navigateur, par exemple orbitdmd.local ou 192.168.0.152) et mot de passe de sa page web.",
+        "description": "Adresse du panneau (comme dans votre navigateur, par exemple orbitdmd.local ou 192.168.1.50) et mot de passe de sa page web.",
         "data": {
           "host": "Adresse du panneau",
           "password": "Mot de passe de la page web"

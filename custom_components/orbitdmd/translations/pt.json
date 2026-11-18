@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Ligar um painel OrbitDMD",
-        "description": "Endereço do painel (como no seu navegador, por exemplo orbitdmd.local ou 192.168.0.152) e palavra-passe da sua página web.",
+        "description": "Endereço do painel (como no seu navegador, por exemplo orbitdmd.local ou 192.168.1.50) e palavra-passe da sua página web.",
         "data": {
           "host": "Endereço do painel",
           "password": "Palavra-passe da página web"

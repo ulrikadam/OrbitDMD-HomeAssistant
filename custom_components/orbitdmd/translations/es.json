@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Vincular un panel OrbitDMD",
-        "description": "Dirección del panel (como en su navegador, por ejemplo orbitdmd.local o 192.168.0.152) y contraseña de su página web.",
+        "description": "Dirección del panel (como en su navegador, por ejemplo orbitdmd.local o 192.168.1.50) y contraseña de su página web.",
         "data": {
           "host": "Dirección del panel",
           "password": "Contraseña de la página web"

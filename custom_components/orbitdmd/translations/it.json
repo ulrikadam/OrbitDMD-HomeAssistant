@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Collegare un pannello OrbitDMD",
-        "description": "Indirizzo del pannello (come nel browser, ad esempio orbitdmd.local o 192.168.0.152) e password della sua pagina web.",
+        "description": "Indirizzo del pannello (come nel browser, ad esempio orbitdmd.local o 192.168.1.50) e password della sua pagina web.",
         "data": {
           "host": "Indirizzo del pannello",
           "password": "Password della pagina web"

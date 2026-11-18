@@ -15,7 +15,7 @@ FIELDS = ["device_id", "message", "gif", "effect", "color", "speed", "passes", "
 # Chaque langue : textes simples, puis listes dans l'ordre de SCREENS / FIELDS (nom, aide) / EFFECTS / COLORS.
 T = {
  "fr": dict(
-  title="Relier un panneau OrbitDMD", desc="Adresse du panneau (comme dans votre navigateur, par exemple orbitdmd.local ou 192.168.0.152) et mot de passe de sa page web.",
+  title="Relier un panneau OrbitDMD", desc="Adresse du panneau (comme dans votre navigateur, par exemple orbitdmd.local ou 192.168.1.50) et mot de passe de sa page web.",
   host="Adresse du panneau", password="Mot de passe de la page web", reauth="Le panneau refuse le mot de passe : indiquez le mot de passe actuel de sa page web.",
   found="Panneau OrbitDMD trouvé", found_desc="Le panneau « {name} » a été trouvé sur le réseau ({host}). Indiquez le mot de passe de sa page web pour le relier.",
   cannot="Panneau injoignable : vérifiez l'adresse et qu'il est allumé.", auth="Mot de passe incorrect.", already="Ce panneau est déjà relié.",
@@ -32,7 +32,7 @@ T = {
   effects=["Défile à gauche", "Défile à droite", "Monte", "Descend", "Lettre par lettre", "Pluie de lettres", "Fondu"],
   colors=["Blanc", "Rouge", "Orange", "Ambre", "Jaune", "Vert", "Turquoise", "Bleu", "Violet", "Rose", "Arc-en-ciel"]),
  "en": dict(
-  title="Connect an OrbitDMD panel", desc="Address of the panel (as in your browser, e.g. orbitdmd.local or 192.168.0.152) and the password of its web page.",
+  title="Connect an OrbitDMD panel", desc="Address of the panel (as in your browser, e.g. orbitdmd.local or 192.168.1.50) and the password of its web page.",
   host="Panel address", password="Web page password", reauth="The panel refused the password: enter the current password of its web page.",
   found="OrbitDMD panel found", found_desc="The panel “{name}” was found on the network ({host}). Enter the password of its web page to connect it.",
   cannot="Panel unreachable: check the address and that it is switched on.", auth="Wrong password.", already="This panel is already set up.",
@@ -49,7 +49,7 @@ T = {
   effects=["Scroll left", "Scroll right", "Rise", "Fall", "Letter by letter", "Raining letters", "Fade"],
   colors=["White", "Red", "Orange", "Amber", "Yellow", "Green", "Turquoise", "Blue", "Purple", "Pink", "Rainbow"]),
  "nl": dict(
-  title="Een OrbitDMD-paneel koppelen", desc="Adres van het paneel (zoals in je browser, bijvoorbeeld orbitdmd.local of 192.168.0.152) en het wachtwoord van de webpagina.",
+  title="Een OrbitDMD-paneel koppelen", desc="Adres van het paneel (zoals in je browser, bijvoorbeeld orbitdmd.local of 192.168.1.50) en het wachtwoord van de webpagina.",
   host="Adres van het paneel", password="Wachtwoord van de webpagina", reauth="Het paneel weigert het wachtwoord: geef het huidige wachtwoord van de webpagina.",
   found="OrbitDMD-paneel gevonden", found_desc="Het paneel “{name}” is op het netwerk gevonden ({host}). Geef het wachtwoord van de webpagina om het te koppelen.",
   cannot="Paneel onbereikbaar: controleer het adres en of het aanstaat.", auth="Onjuist wachtwoord.", already="Dit paneel is al gekoppeld.",
@@ -66,7 +66,7 @@ T = {
   effects=["Naar links", "Naar rechts", "Omhoog", "Omlaag", "Letter voor letter", "Regen van letters", "Vervagen"],
   colors=["Wit", "Rood", "Oranje", "Amber", "Geel", "Groen", "Turkoois", "Blauw", "Paars", "Roze", "Regenboog"]),
  "es": dict(
-  title="Vincular un panel OrbitDMD", desc="Dirección del panel (como en su navegador, por ejemplo orbitdmd.local o 192.168.0.152) y contraseña de su página web.",
+  title="Vincular un panel OrbitDMD", desc="Dirección del panel (como en su navegador, por ejemplo orbitdmd.local o 192.168.1.50) y contraseña de su página web.",
   host="Dirección del panel", password="Contraseña de la página web", reauth="El panel rechaza la contraseña: indique la contraseña actual de su página web.",
   found="Panel OrbitDMD encontrado", found_desc="Se ha encontrado el panel «{name}» en la red ({host}). Indique la contraseña de su página web para vincularlo.",
   cannot="Panel inaccesible: compruebe la dirección y que esté encendido.", auth="Contraseña incorrecta.", already="Este panel ya está vinculado.",
@@ -83,7 +83,7 @@ T = {
   effects=["Hacia la izquierda", "Hacia la derecha", "Sube", "Baja", "Letra a letra", "Lluvia de letras", "Fundido"],
   colors=["Blanco", "Rojo", "Naranja", "Ámbar", "Amarillo", "Verde", "Turquesa", "Azul", "Violeta", "Rosa", "Arcoíris"]),
  "ru": dict(
-  title="Подключить панель OrbitDMD", desc="Адрес панели (как в браузере, например orbitdmd.local или 192.168.0.152) и пароль её веб-страницы.",
+  title="Подключить панель OrbitDMD", desc="Адрес панели (как в браузере, например orbitdmd.local или 192.168.1.50) и пароль её веб-страницы.",
   host="Адрес панели", password="Пароль веб-страницы", reauth="Панель не принимает пароль: укажите текущий пароль её веб-страницы.",
   found="Найдена панель OrbitDMD", found_desc="В сети найдена панель «{name}» ({host}). Укажите пароль её веб-страницы, чтобы подключить её.",
   cannot="Панель недоступна: проверьте адрес и что она включена.", auth="Неверный пароль.", already="Эта панель уже подключена.",
@@ -100,7 +100,7 @@ T = {
   effects=["Влево", "Вправо", "Вверх", "Вниз", "По буквам", "Дождь из букв", "Плавно"],
   colors=["Белый", "Красный", "Оранжевый", "Янтарный", "Жёлтый", "Зелёный", "Бирюзовый", "Синий", "Фиолетовый", "Розовый", "Радуга"]),
  "de": dict(
-  title="OrbitDMD-Panel verbinden", desc="Adresse des Panels (wie im Browser, z. B. orbitdmd.local oder 192.168.0.152) und das Passwort seiner Webseite.",
+  title="OrbitDMD-Panel verbinden", desc="Adresse des Panels (wie im Browser, z. B. orbitdmd.local oder 192.168.1.50) und das Passwort seiner Webseite.",
   host="Adresse des Panels", password="Passwort der Webseite", reauth="Das Panel lehnt das Passwort ab: Geben Sie das aktuelle Passwort seiner Webseite ein.",
   found="OrbitDMD-Panel gefunden", found_desc="Das Panel „{name}“ wurde im Netzwerk gefunden ({host}). Geben Sie das Passwort seiner Webseite ein, um es zu verbinden.",
   cannot="Panel nicht erreichbar: Prüfen Sie die Adresse und ob es eingeschaltet ist.", auth="Falsches Passwort.", already="Dieses Panel ist bereits verbunden.",
@@ -117,7 +117,7 @@ T = {
   effects=["Nach links", "Nach rechts", "Nach oben", "Nach unten", "Buchstabe für Buchstabe", "Buchstabenregen", "Einblenden"],
   colors=["Weiß", "Rot", "Orange", "Bernstein", "Gelb", "Grün", "Türkis", "Blau", "Violett", "Rosa", "Regenbogen"]),
  "it": dict(
-  title="Collegare un pannello OrbitDMD", desc="Indirizzo del pannello (come nel browser, ad esempio orbitdmd.local o 192.168.0.152) e password della sua pagina web.",
+  title="Collegare un pannello OrbitDMD", desc="Indirizzo del pannello (come nel browser, ad esempio orbitdmd.local o 192.168.1.50) e password della sua pagina web.",
   host="Indirizzo del pannello", password="Password della pagina web", reauth="Il pannello rifiuta la password: inserisci la password attuale della sua pagina web.",
   found="Pannello OrbitDMD trovato", found_desc="Il pannello «{name}» è stato trovato in rete ({host}). Inserisci la password della sua pagina web per collegarlo.",
   cannot="Pannello irraggiungibile: controlla l'indirizzo e che sia acceso.", auth="Password errata.", already="Questo pannello è già collegato.",
@@ -134,7 +134,7 @@ T = {
   effects=["A sinistra", "A destra", "Sale", "Scende", "Lettera per lettera", "Pioggia di lettere", "Dissolvenza"],
   colors=["Bianco", "Rosso", "Arancione", "Ambra", "Giallo", "Verde", "Turchese", "Blu", "Viola", "Rosa", "Arcobaleno"]),
  "pt": dict(
-  title="Ligar um painel OrbitDMD", desc="Endereço do painel (como no seu navegador, por exemplo orbitdmd.local ou 192.168.0.152) e palavra-passe da sua página web.",
+  title="Ligar um painel OrbitDMD", desc="Endereço do painel (como no seu navegador, por exemplo orbitdmd.local ou 192.168.1.50) e palavra-passe da sua página web.",
   host="Endereço do painel", password="Palavra-passe da página web", reauth="O painel recusa a palavra-passe: indique a palavra-passe atual da sua página web.",
   found="Painel OrbitDMD encontrado", found_desc="O painel «{name}» foi encontrado na rede ({host}). Indique a palavra-passe da sua página web para o ligar.",
   cannot="Painel inacessível: verifique o endereço e se está ligado.", auth="Palavra-passe incorreta.", already="Este painel já está ligado.",
@@ -151,7 +151,7 @@ T = {
   effects=["Para a esquerda", "Para a direita", "Sobe", "Desce", "Letra por letra", "Chuva de letras", "Esmaecer"],
   colors=["Branco", "Vermelho", "Laranja", "Âmbar", "Amarelo", "Verde", "Turquesa", "Azul", "Roxo", "Rosa", "Arco-íris"]),
  "pl": dict(
-  title="Połącz panel OrbitDMD", desc="Adres panelu (jak w przeglądarce, np. orbitdmd.local lub 192.168.0.152) i hasło jego strony WWW.",
+  title="Połącz panel OrbitDMD", desc="Adres panelu (jak w przeglądarce, np. orbitdmd.local lub 192.168.1.50) i hasło jego strony WWW.",
   host="Adres panelu", password="Hasło strony WWW", reauth="Panel odrzuca hasło: podaj aktualne hasło jego strony WWW.",
   found="Znaleziono panel OrbitDMD", found_desc="W sieci znaleziono panel „{name}” ({host}). Podaj hasło jego strony WWW, aby go połączyć.",
   cannot="Panel nieosiągalny: sprawdź adres i czy jest włączony.", auth="Nieprawidłowe hasło.", already="Ten panel jest już połączony.",
@@ -168,7 +168,7 @@ T = {
   effects=["W lewo", "W prawo", "W górę", "W dół", "Litera po literze", "Deszcz liter", "Przenikanie"],
   colors=["Biały", "Czerwony", "Pomarańczowy", "Bursztynowy", "Żółty", "Zielony", "Turkusowy", "Niebieski", "Fioletowy", "Różowy", "Tęcza"]),
  "uk": dict(
-  title="Підключити панель OrbitDMD", desc="Адреса панелі (як у браузері, наприклад orbitdmd.local або 192.168.0.152) і пароль її вебсторінки.",
+  title="Підключити панель OrbitDMD", desc="Адреса панелі (як у браузері, наприклад orbitdmd.local або 192.168.1.50) і пароль її вебсторінки.",
   host="Адреса панелі", password="Пароль вебсторінки", reauth="Панель не приймає пароль: вкажіть поточний пароль її вебсторінки.",
   found="Знайдено панель OrbitDMD", found_desc="У мережі знайдено панель «{name}» ({host}). Вкажіть пароль її вебсторінки, щоб підключити її.",
   cannot="Панель недоступна: перевірте адресу і чи вона увімкнена.", auth="Неправильний пароль.", already="Цю панель уже підключено.",
@@ -185,7 +185,7 @@ T = {
   effects=["Ліворуч", "Праворуч", "Вгору", "Вниз", "По літерах", "Дощ із літер", "Плавно"],
   colors=["Білий", "Червоний", "Помаранчевий", "Бурштиновий", "Жовтий", "Зелений", "Бірюзовий", "Синій", "Фіолетовий", "Рожевий", "Веселка"]),
  "tr": dict(
-  title="Bir OrbitDMD paneli bağla", desc="Panelin adresi (tarayıcınızdaki gibi, örneğin orbitdmd.local veya 192.168.0.152) ve web sayfasının parolası.",
+  title="Bir OrbitDMD paneli bağla", desc="Panelin adresi (tarayıcınızdaki gibi, örneğin orbitdmd.local veya 192.168.1.50) ve web sayfasının parolası.",
   host="Panel adresi", password="Web sayfası parolası", reauth="Panel parolayı reddediyor: web sayfasının güncel parolasını girin.",
   found="OrbitDMD paneli bulundu", found_desc="“{name}” paneli ağda bulundu ({host}). Bağlamak için web sayfasının parolasını girin.",
   cannot="Panele ulaşılamıyor: adresi ve açık olduğunu kontrol edin.", auth="Yanlış parola.", already="Bu panel zaten bağlı.",
@@ -202,7 +202,7 @@ T = {
   effects=["Sola", "Sağa", "Yukarı", "Aşağı", "Harf harf", "Harf yağmuru", "Solma"],
   colors=["Beyaz", "Kırmızı", "Turuncu", "Kehribar", "Sarı", "Yeşil", "Turkuaz", "Mavi", "Mor", "Pembe", "Gökkuşağı"]),
  "cs": dict(
-  title="Připojit panel OrbitDMD", desc="Adresa panelu (jako v prohlížeči, např. orbitdmd.local nebo 192.168.0.152) a heslo jeho webové stránky.",
+  title="Připojit panel OrbitDMD", desc="Adresa panelu (jako v prohlížeči, např. orbitdmd.local nebo 192.168.1.50) a heslo jeho webové stránky.",
   host="Adresa panelu", password="Heslo webové stránky", reauth="Panel odmítá heslo: zadejte aktuální heslo jeho webové stránky.",
   found="Nalezen panel OrbitDMD", found_desc="V síti byl nalezen panel „{name}“ ({host}). Zadejte heslo jeho webové stránky a připojte ho.",
   cannot="Panel je nedostupný: zkontrolujte adresu a zda je zapnutý.", auth="Nesprávné heslo.", already="Tento panel je už připojen.",

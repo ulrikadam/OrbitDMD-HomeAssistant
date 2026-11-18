@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "OrbitDMD-Panel verbinden",
-        "description": "Adresse des Panels (wie im Browser, z. B. orbitdmd.local oder 192.168.0.152) und das Passwort seiner Webseite.",
+        "description": "Adresse des Panels (wie im Browser, z. B. orbitdmd.local oder 192.168.1.50) und das Passwort seiner Webseite.",
         "data": {
           "host": "Adresse des Panels",
           "password": "Passwort der Webseite"
