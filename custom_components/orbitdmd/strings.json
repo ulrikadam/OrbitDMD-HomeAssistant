@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect an OrbitDMD panel",
+        "description": "Address of the panel (as in your browser, e.g. orbitdmd.local or 192.168.0.152) and the password of its web page.",
+        "data": {
+          "host": "Panel address",
+          "password": "Web page password"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "OrbitDMD panel found",
+        "description": "The panel “{name}” was found on the network ({host}). Enter the password of its web page to connect it.",
+        "data": {
+          "password": "Web page password"
+        }
+      },
+      "reauth_confirm": {
+        "description": "The panel refused the password: enter the current password of its web page.",
+        "data": {
+          "password": "Web page password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Panel unreachable: check the address and that it is switched on.",
+      "invalid_auth": "Wrong password."
+    },
+    "abort": {
+      "already_configured": "This panel is already set up.",
+      "reauth_successful": "Password updated.",
+      "cannot_connect": "Panel unreachable: check the address and that it is switched on.",
+      "not_orbitdmd": "This device is not an OrbitDMD panel."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Pause"
+      },
+      "hourly_brightness": {
+        "name": "Hourly brightness"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Show time"
+      },
+      "show_weather": {
+        "name": "Show weather"
+      },
+      "restart": {
+        "name": "Restart"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Current GIF"
+      },
+      "screen": {
+        "name": "Screen",
+        "state": {
+          "gif": "GIF",
+          "heure": "Time",
+          "date": "Date",
+          "meteo": "Weather",
+          "message": "Message",
+          "texte": "Text",
+          "compte": "Countdown",
+          "demarrage": "Start-up",
+          "mire": "Test pattern"
+        }
+      },
+      "temperature": {
+        "name": "Processor temperature"
+      },
+      "ip": {
+        "name": "IP address"
+      },
+      "version": {
+        "name": "Version"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Message"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Show a notification",
+      "description": "Shows a text and/or a GIF on the panel right away, over the GIFs.",
+      "fields": {
+        "device_id": {
+          "name": "Panel",
+          "description": "Panels to use (all if empty)."
+        },
+        "message": {
+          "name": "Text",
+          "description": "Text to scroll (200 bytes at most)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF played before the text: Category/name.gif"
+        },
+        "effect": {
+          "name": "Effect",
+          "description": "How the text comes in."
+        },
+        "color": {
+          "name": "Colour",
+          "description": "Colour name or RRGGBB."
+        },
+        "speed": {
+          "name": "Speed",
+          "description": "1 (slow) to 10 (fast)."
+        },
+        "passes": {
+          "name": "Passes",
+          "description": "Number of passes of the GIF and the text (1 to 10)."
+        },
+        "font": {
+          "name": "Font",
+          "description": "Pixel or a font file of the panel."
+        },
+        "size": {
+          "name": "Size",
+          "description": "Size in pixels, 0 = automatic."
+        },
+        "blink": {
+          "name": "Blink",
+          "description": "Blinking text (priority alert)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "Scroll left",
+        "inverse": "Scroll right",
+        "monte": "Rise",
+        "descend": "Fall",
+        "lettres": "Letter by letter",
+        "pluie": "Raining letters",
+        "fondu": "Fade"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "White",
+        "rouge": "Red",
+        "orange": "Orange",
+        "ambre": "Amber",
+        "jaune": "Yellow",
+        "vert": "Green",
+        "turquoise": "Turquoise",
+        "bleu": "Blue",
+        "violet": "Purple",
+        "rose": "Pink",
+        "arc-en-ciel": "Rainbow"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Show a notification"
+    },
+    "extra_fields": {
+      "message": "Text",
+      "gif": "GIF",
+      "effect": "Effect",
+      "color": "Colour",
+      "speed": "Speed",
+      "passes": "Passes",
+      "blink": "Blink"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Update the OrbitDMD panel “{name}”",
+      "description": "The panel “{name}” runs program {version}. The integration needs version {minimum} or later to show alerts. Download the latest program (link below), then install it from the panel's web page: System → New program."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "The panel “{name}” runs program {version}: install version {minimum} or later (panel web page → System → New program)."
+    },
+    "no_panel": {
+      "message": "No OrbitDMD panel is set up."
+    },
+    "need_content": {
+      "message": "A text or a GIF is needed."
+    },
+    "panel_error": {
+      "message": "The panel refused: {error}"
+    }
+  }
+}

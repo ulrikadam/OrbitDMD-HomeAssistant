@@ -1,0 +1,48 @@
+notify:
+  fields:
+    device_id:
+      selector:
+        device:
+          multiple: true
+          integration: orbitdmd
+    message:
+      example: "Quelqu'un sonne !"
+      selector:
+        text:
+    gif:
+      example: "Domotique/sonnette.gif"
+      selector:
+        text:
+    effect:
+      selector:
+        select:
+          translation_key: effect
+          options: [defile, inverse, monte, descend, lettres, pluie, fondu]
+    color:
+      selector:
+        select:
+          translation_key: color
+          custom_value: true
+          options: [blanc, rouge, orange, ambre, jaune, vert, turquoise, bleu, violet, rose, arc-en-ciel]
+    speed:
+      selector:
+        number:
+          min: 1
+          max: 10
+    passes:
+      selector:
+        number:
+          min: 1
+          max: 10
+    font:
+      example: "Orbitron.ttf"
+      selector:
+        text:
+    blink:
+      selector:
+        boolean:
+    size:
+      selector:
+        number:
+          min: 0
+          max: 48

@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Підключити панель OrbitDMD",
+        "description": "Адреса панелі (як у браузері, наприклад orbitdmd.local або 192.168.0.152) і пароль її вебсторінки.",
+        "data": {
+          "host": "Адреса панелі",
+          "password": "Пароль вебсторінки"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Знайдено панель OrbitDMD",
+        "description": "У мережі знайдено панель «{name}» ({host}). Вкажіть пароль її вебсторінки, щоб підключити її.",
+        "data": {
+          "password": "Пароль вебсторінки"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Панель не приймає пароль: вкажіть поточний пароль її вебсторінки.",
+        "data": {
+          "password": "Пароль вебсторінки"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Панель недоступна: перевірте адресу і чи вона увімкнена.",
+      "invalid_auth": "Неправильний пароль."
+    },
+    "abort": {
+      "already_configured": "Цю панель уже підключено.",
+      "reauth_successful": "Пароль оновлено.",
+      "cannot_connect": "Панель недоступна: перевірте адресу і чи вона увімкнена.",
+      "not_orbitdmd": "Цей пристрій не є панеллю OrbitDMD."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Пауза"
+      },
+      "hourly_brightness": {
+        "name": "Яскравість за годинами"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Показати час"
+      },
+      "show_weather": {
+        "name": "Показати погоду"
+      },
+      "restart": {
+        "name": "Перезапустити"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Поточний GIF"
+      },
+      "screen": {
+        "name": "Екран",
+        "state": {
+          "gif": "GIF",
+          "heure": "Час",
+          "date": "Дата",
+          "meteo": "Погода",
+          "message": "Повідомлення",
+          "texte": "Текст",
+          "compte": "Зворотний відлік",
+          "demarrage": "Запуск",
+          "mire": "Тестова таблиця"
+        }
+      },
+      "temperature": {
+        "name": "Температура процесора"
+      },
+      "ip": {
+        "name": "IP-адреса"
+      },
+      "version": {
+        "name": "Версія"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Повідомлення"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Показати сповіщення",
+      "description": "Одразу показує текст і/або GIF на панелі поверх GIF.",
+      "fields": {
+        "device_id": {
+          "name": "Панель",
+          "description": "Панелі для використання (усі, якщо порожньо)."
+        },
+        "message": {
+          "name": "Текст",
+          "description": "Рухомий текст (не більше 200 байтів)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF перед текстом: Категорія/назва.gif"
+        },
+        "effect": {
+          "name": "Ефект",
+          "description": "Поява тексту."
+        },
+        "color": {
+          "name": "Колір",
+          "description": "Назва кольору або RRGGBB."
+        },
+        "speed": {
+          "name": "Швидкість",
+          "description": "Від 1 (повільно) до 10 (швидко)."
+        },
+        "passes": {
+          "name": "Проходи",
+          "description": "Кількість проходів GIF і тексту (від 1 до 10)."
+        },
+        "font": {
+          "name": "Шрифт",
+          "description": "Pixel або файл шрифту панелі."
+        },
+        "size": {
+          "name": "Розмір",
+          "description": "Розмір у пікселях, 0 = автоматично."
+        },
+        "blink": {
+          "name": "Блимання",
+          "description": "Блимаючий текст (пріоритетне сповіщення)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "Ліворуч",
+        "inverse": "Праворуч",
+        "monte": "Вгору",
+        "descend": "Вниз",
+        "lettres": "По літерах",
+        "pluie": "Дощ із літер",
+        "fondu": "Плавно"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Білий",
+        "rouge": "Червоний",
+        "orange": "Помаранчевий",
+        "ambre": "Бурштиновий",
+        "jaune": "Жовтий",
+        "vert": "Зелений",
+        "turquoise": "Бірюзовий",
+        "bleu": "Синій",
+        "violet": "Фіолетовий",
+        "rose": "Рожевий",
+        "arc-en-ciel": "Веселка"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Показати сповіщення"
+    },
+    "extra_fields": {
+      "message": "Текст",
+      "gif": "GIF",
+      "effect": "Ефект",
+      "color": "Колір",
+      "speed": "Швидкість",
+      "passes": "Проходи",
+      "blink": "Блимання"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Оновіть панель OrbitDMD «{name}»",
+      "description": "На панелі «{name}» встановлено програму {version}. Для показу сповіщень інтеграції потрібна версія {minimum} або новіша. Завантажте останню програму (посилання нижче) і встановіть її через вебсторінку панелі: Система → Нова програма."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "На панелі «{name}» програма {version}: встановіть версію {minimum} або новішу (вебсторінка панелі → Система → Нова програма)."
+    },
+    "no_panel": {
+      "message": "Панель OrbitDMD не підключено."
+    },
+    "need_content": {
+      "message": "Потрібен текст або GIF."
+    },
+    "panel_error": {
+      "message": "Панель відмовила: {error}"
+    }
+  }
+}

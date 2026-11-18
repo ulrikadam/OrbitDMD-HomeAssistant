@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Połącz panel OrbitDMD",
+        "description": "Adres panelu (jak w przeglądarce, np. orbitdmd.local lub 192.168.0.152) i hasło jego strony WWW.",
+        "data": {
+          "host": "Adres panelu",
+          "password": "Hasło strony WWW"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Znaleziono panel OrbitDMD",
+        "description": "W sieci znaleziono panel „{name}” ({host}). Podaj hasło jego strony WWW, aby go połączyć.",
+        "data": {
+          "password": "Hasło strony WWW"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Panel odrzuca hasło: podaj aktualne hasło jego strony WWW.",
+        "data": {
+          "password": "Hasło strony WWW"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Panel nieosiągalny: sprawdź adres i czy jest włączony.",
+      "invalid_auth": "Nieprawidłowe hasło."
+    },
+    "abort": {
+      "already_configured": "Ten panel jest już połączony.",
+      "reauth_successful": "Hasło zaktualizowane.",
+      "cannot_connect": "Panel nieosiągalny: sprawdź adres i czy jest włączony.",
+      "not_orbitdmd": "To urządzenie nie jest panelem OrbitDMD."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Pauza"
+      },
+      "hourly_brightness": {
+        "name": "Jasność według godzin"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Pokaż godzinę"
+      },
+      "show_weather": {
+        "name": "Pokaż pogodę"
+      },
+      "restart": {
+        "name": "Uruchom ponownie"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Wyświetlany GIF"
+      },
+      "screen": {
+        "name": "Ekran",
+        "state": {
+          "gif": "GIF",
+          "heure": "Godzina",
+          "date": "Data",
+          "meteo": "Pogoda",
+          "message": "Wiadomość",
+          "texte": "Tekst",
+          "compte": "Odliczanie",
+          "demarrage": "Uruchamianie",
+          "mire": "Obraz testowy"
+        }
+      },
+      "temperature": {
+        "name": "Temperatura procesora"
+      },
+      "ip": {
+        "name": "Adres IP"
+      },
+      "version": {
+        "name": "Wersja"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Wiadomość"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Pokaż powiadomienie",
+      "description": "Od razu wyświetla tekst i/lub GIF na panelu, ponad GIF-ami.",
+      "fields": {
+        "device_id": {
+          "name": "Panel",
+          "description": "Używane panele (wszystkie, jeśli puste)."
+        },
+        "message": {
+          "name": "Tekst",
+          "description": "Przewijany tekst (najwyżej 200 bajtów)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF przed tekstem: Kategoria/nazwa.gif"
+        },
+        "effect": {
+          "name": "Efekt",
+          "description": "Pojawianie się tekstu."
+        },
+        "color": {
+          "name": "Kolor",
+          "description": "Nazwa koloru lub RRGGBB."
+        },
+        "speed": {
+          "name": "Prędkość",
+          "description": "Od 1 (wolno) do 10 (szybko)."
+        },
+        "passes": {
+          "name": "Przebiegi",
+          "description": "Liczba przebiegów GIF-a i tekstu (od 1 do 10)."
+        },
+        "font": {
+          "name": "Czcionka",
+          "description": "Pixel lub plik czcionki panelu."
+        },
+        "size": {
+          "name": "Rozmiar",
+          "description": "Rozmiar w pikselach, 0 = automatycznie."
+        },
+        "blink": {
+          "name": "Miganie",
+          "description": "Migający tekst (powiadomienie priorytetowe)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "W lewo",
+        "inverse": "W prawo",
+        "monte": "W górę",
+        "descend": "W dół",
+        "lettres": "Litera po literze",
+        "pluie": "Deszcz liter",
+        "fondu": "Przenikanie"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Biały",
+        "rouge": "Czerwony",
+        "orange": "Pomarańczowy",
+        "ambre": "Bursztynowy",
+        "jaune": "Żółty",
+        "vert": "Zielony",
+        "turquoise": "Turkusowy",
+        "bleu": "Niebieski",
+        "violet": "Fioletowy",
+        "rose": "Różowy",
+        "arc-en-ciel": "Tęcza"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Pokaż powiadomienie"
+    },
+    "extra_fields": {
+      "message": "Tekst",
+      "gif": "GIF",
+      "effect": "Efekt",
+      "color": "Kolor",
+      "speed": "Prędkość",
+      "passes": "Przebiegi",
+      "blink": "Miganie"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Zaktualizuj panel OrbitDMD „{name}”",
+      "description": "Panel „{name}” ma program {version}. Do wyświetlania powiadomień integracja wymaga wersji {minimum} lub nowszej. Pobierz najnowszy program (link poniżej) i zainstaluj go ze strony WWW panelu: System → Nowy program."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "Panel „{name}” ma program {version}: zainstaluj wersję {minimum} lub nowszą (strona WWW panelu → System → Nowy program)."
+    },
+    "no_panel": {
+      "message": "Nie połączono żadnego panelu OrbitDMD."
+    },
+    "need_content": {
+      "message": "Potrzebny jest tekst lub GIF."
+    },
+    "panel_error": {
+      "message": "Panel odmówił: {error}"
+    }
+  }
+}

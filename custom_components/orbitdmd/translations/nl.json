@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Een OrbitDMD-paneel koppelen",
+        "description": "Adres van het paneel (zoals in je browser, bijvoorbeeld orbitdmd.local of 192.168.0.152) en het wachtwoord van de webpagina.",
+        "data": {
+          "host": "Adres van het paneel",
+          "password": "Wachtwoord van de webpagina"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "OrbitDMD-paneel gevonden",
+        "description": "Het paneel “{name}” is op het netwerk gevonden ({host}). Geef het wachtwoord van de webpagina om het te koppelen.",
+        "data": {
+          "password": "Wachtwoord van de webpagina"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Het paneel weigert het wachtwoord: geef het huidige wachtwoord van de webpagina.",
+        "data": {
+          "password": "Wachtwoord van de webpagina"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Paneel onbereikbaar: controleer het adres en of het aanstaat.",
+      "invalid_auth": "Onjuist wachtwoord."
+    },
+    "abort": {
+      "already_configured": "Dit paneel is al gekoppeld.",
+      "reauth_successful": "Wachtwoord bijgewerkt.",
+      "cannot_connect": "Paneel onbereikbaar: controleer het adres en of het aanstaat.",
+      "not_orbitdmd": "Dit apparaat is geen OrbitDMD-paneel."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Pauze"
+      },
+      "hourly_brightness": {
+        "name": "Helderheid per uur"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Tijd tonen"
+      },
+      "show_weather": {
+        "name": "Weer tonen"
+      },
+      "restart": {
+        "name": "Herstarten"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Getoonde GIF"
+      },
+      "screen": {
+        "name": "Scherm",
+        "state": {
+          "gif": "GIF",
+          "heure": "Tijd",
+          "date": "Datum",
+          "meteo": "Weer",
+          "message": "Bericht",
+          "texte": "Tekst",
+          "compte": "Aftelling",
+          "demarrage": "Opstarten",
+          "mire": "Testbeeld"
+        }
+      },
+      "temperature": {
+        "name": "Processortemperatuur"
+      },
+      "ip": {
+        "name": "IP-adres"
+      },
+      "version": {
+        "name": "Versie"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Bericht"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Een melding tonen",
+      "description": "Toont meteen een tekst en/of een GIF op het paneel, boven de GIF's.",
+      "fields": {
+        "device_id": {
+          "name": "Paneel",
+          "description": "Te gebruiken panelen (alle als leeg)."
+        },
+        "message": {
+          "name": "Tekst",
+          "description": "Schuivende tekst (max. 200 bytes)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF vóór de tekst: Categorie/naam.gif"
+        },
+        "effect": {
+          "name": "Effect",
+          "description": "Hoe de tekst binnenkomt."
+        },
+        "color": {
+          "name": "Kleur",
+          "description": "Kleurnaam of RRGGBB."
+        },
+        "speed": {
+          "name": "Snelheid",
+          "description": "1 (traag) tot 10 (snel)."
+        },
+        "passes": {
+          "name": "Doorgangen",
+          "description": "Aantal doorgangen van de GIF en de tekst (1 tot 10)."
+        },
+        "font": {
+          "name": "Lettertype",
+          "description": "Pixel of een lettertypebestand van het paneel."
+        },
+        "size": {
+          "name": "Grootte",
+          "description": "Grootte in pixels, 0 = automatisch."
+        },
+        "blink": {
+          "name": "Knipperen",
+          "description": "Knipperende tekst (prioritaire melding)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "Naar links",
+        "inverse": "Naar rechts",
+        "monte": "Omhoog",
+        "descend": "Omlaag",
+        "lettres": "Letter voor letter",
+        "pluie": "Regen van letters",
+        "fondu": "Vervagen"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Wit",
+        "rouge": "Rood",
+        "orange": "Oranje",
+        "ambre": "Amber",
+        "jaune": "Geel",
+        "vert": "Groen",
+        "turquoise": "Turkoois",
+        "bleu": "Blauw",
+        "violet": "Paars",
+        "rose": "Roze",
+        "arc-en-ciel": "Regenboog"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Een melding tonen"
+    },
+    "extra_fields": {
+      "message": "Tekst",
+      "gif": "GIF",
+      "effect": "Effect",
+      "color": "Kleur",
+      "speed": "Snelheid",
+      "passes": "Doorgangen",
+      "blink": "Knipperen"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Werk het OrbitDMD-paneel “{name}” bij",
+      "description": "Het paneel “{name}” heeft programma {version}. De integratie heeft versie {minimum} of nieuwer nodig om meldingen te tonen. Download het nieuwste programma (link hieronder) en installeer het via de webpagina van het paneel: Systeem → Nieuw programma."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "Het paneel “{name}” heeft programma {version}: installeer versie {minimum} of nieuwer (webpagina van het paneel → Systeem → Nieuw programma)."
+    },
+    "no_panel": {
+      "message": "Er is geen OrbitDMD-paneel gekoppeld."
+    },
+    "need_content": {
+      "message": "Er is een tekst of een GIF nodig."
+    },
+    "panel_error": {
+      "message": "Het paneel weigerde: {error}"
+    }
+  }
+}

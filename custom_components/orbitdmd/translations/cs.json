@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Připojit panel OrbitDMD",
+        "description": "Adresa panelu (jako v prohlížeči, např. orbitdmd.local nebo 192.168.0.152) a heslo jeho webové stránky.",
+        "data": {
+          "host": "Adresa panelu",
+          "password": "Heslo webové stránky"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Nalezen panel OrbitDMD",
+        "description": "V síti byl nalezen panel „{name}“ ({host}). Zadejte heslo jeho webové stránky a připojte ho.",
+        "data": {
+          "password": "Heslo webové stránky"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Panel odmítá heslo: zadejte aktuální heslo jeho webové stránky.",
+        "data": {
+          "password": "Heslo webové stránky"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Panel je nedostupný: zkontrolujte adresu a zda je zapnutý.",
+      "invalid_auth": "Nesprávné heslo."
+    },
+    "abort": {
+      "already_configured": "Tento panel je už připojen.",
+      "reauth_successful": "Heslo aktualizováno.",
+      "cannot_connect": "Panel je nedostupný: zkontrolujte adresu a zda je zapnutý.",
+      "not_orbitdmd": "Toto zařízení není panel OrbitDMD."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Pauza"
+      },
+      "hourly_brightness": {
+        "name": "Jas podle hodin"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Zobrazit čas"
+      },
+      "show_weather": {
+        "name": "Zobrazit počasí"
+      },
+      "restart": {
+        "name": "Restartovat"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Zobrazený GIF"
+      },
+      "screen": {
+        "name": "Obrazovka",
+        "state": {
+          "gif": "GIF",
+          "heure": "Čas",
+          "date": "Datum",
+          "meteo": "Počasí",
+          "message": "Zpráva",
+          "texte": "Text",
+          "compte": "Odpočet",
+          "demarrage": "Spuštění",
+          "mire": "Testovací obrazec"
+        }
+      },
+      "temperature": {
+        "name": "Teplota procesoru"
+      },
+      "ip": {
+        "name": "IP adresa"
+      },
+      "version": {
+        "name": "Verze"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Zpráva"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Zobrazit upozornění",
+      "description": "Okamžitě zobrazí na panelu text a/nebo GIF přes GIFy.",
+      "fields": {
+        "device_id": {
+          "name": "Panel",
+          "description": "Použité panely (všechny, je-li prázdné)."
+        },
+        "message": {
+          "name": "Text",
+          "description": "Běžící text (nejvýše 200 bajtů)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF před textem: Kategorie/název.gif"
+        },
+        "effect": {
+          "name": "Efekt",
+          "description": "Příchod textu."
+        },
+        "color": {
+          "name": "Barva",
+          "description": "Název barvy nebo RRGGBB."
+        },
+        "speed": {
+          "name": "Rychlost",
+          "description": "Od 1 (pomalu) do 10 (rychle)."
+        },
+        "passes": {
+          "name": "Průchody",
+          "description": "Počet průchodů GIFu a textu (od 1 do 10)."
+        },
+        "font": {
+          "name": "Písmo",
+          "description": "Pixel nebo soubor písma panelu."
+        },
+        "size": {
+          "name": "Velikost",
+          "description": "Velikost v pixelech, 0 = automaticky."
+        },
+        "blink": {
+          "name": "Blikání",
+          "description": "Blikající text (prioritní upozornění)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "Doleva",
+        "inverse": "Doprava",
+        "monte": "Nahoru",
+        "descend": "Dolů",
+        "lettres": "Písmeno po písmenu",
+        "pluie": "Déšť písmen",
+        "fondu": "Prolínání"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Bílá",
+        "rouge": "Červená",
+        "orange": "Oranžová",
+        "ambre": "Jantarová",
+        "jaune": "Žlutá",
+        "vert": "Zelená",
+        "turquoise": "Tyrkysová",
+        "bleu": "Modrá",
+        "violet": "Fialová",
+        "rose": "Růžová",
+        "arc-en-ciel": "Duha"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Zobrazit upozornění"
+    },
+    "extra_fields": {
+      "message": "Text",
+      "gif": "GIF",
+      "effect": "Efekt",
+      "color": "Barva",
+      "speed": "Rychlost",
+      "passes": "Průchody",
+      "blink": "Blikání"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Aktualizujte panel OrbitDMD „{name}“",
+      "description": "Panel „{name}“ má program {version}. Integrace potřebuje k zobrazení upozornění verzi {minimum} nebo novější. Stáhněte nejnovější program (odkaz níže) a nainstalujte ho z webové stránky panelu: Systém → Nový program."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "Panel „{name}“ má program {version}: nainstalujte verzi {minimum} nebo novější (webová stránka panelu → Systém → Nový program)."
+    },
+    "no_panel": {
+      "message": "Žádný panel OrbitDMD není připojen."
+    },
+    "need_content": {
+      "message": "Je potřeba text nebo GIF."
+    },
+    "panel_error": {
+      "message": "Panel odmítl: {error}"
+    }
+  }
+}

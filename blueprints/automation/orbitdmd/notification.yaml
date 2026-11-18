@@ -1,0 +1,72 @@
+blueprint:
+  name: OrbitDMD - notification quand une entité change
+  description: >
+    Affiche une GIF et/ou un texte sur un panneau OrbitDMD quand une entité passe à un état
+    (sonnette, porte, lave-linge…). Shows a GIF and/or a text on an OrbitDMD panel when an entity
+    changes to a state.
+  domain: automation
+  source_url: https://github.com/ulrikadam/OrbitDMD-HomeAssistant/blob/main/blueprints/automation/orbitdmd/notification.yaml
+  input:
+    entite:
+      name: Entité / Entity
+      selector:
+        entity: {}
+    etat:
+      name: Nouvel état (vide = tout changement) / New state (empty = any change)
+      default: ""
+      selector:
+        text: {}
+    panneau:
+      name: Panneau / Panel
+      selector:
+        device:
+          integration: orbitdmd
+    message:
+      name: Texte / Text
+      default: ""
+      selector:
+        text: {}
+    gif:
+      name: GIF (Categorie/nom.gif)
+      default: "Domotique/sonnette.gif"
+      selector:
+        text: {}
+    couleur:
+      name: Couleur / Colour
+      default: blanc
+      selector:
+        select:
+          custom_value: true
+          options: [blanc, rouge, orange, ambre, jaune, vert, turquoise, bleu, violet, rose, arc-en-ciel]
+    effet:
+      name: Effet / Effect
+      default: defile
+      selector:
+        select:
+          options: [defile, inverse, monte, descend, lettres, pluie, fondu]
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input entite
+
+variables:
+  etat_voulu: !input etat
+
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state is not none and trigger.from_state is not none
+         and trigger.to_state.state != trigger.from_state.state
+         and (etat_voulu == '' or trigger.to_state.state == etat_voulu) }}
+
+actions:
+  - action: orbitdmd.notify
+    data:
+      device_id: !input panneau
+      message: !input message
+      gif: !input gif
+      color: !input couleur
+      effect: !input effet

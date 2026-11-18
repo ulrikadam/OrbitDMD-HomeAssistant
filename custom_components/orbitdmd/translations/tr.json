@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Bir OrbitDMD paneli bağla",
+        "description": "Panelin adresi (tarayıcınızdaki gibi, örneğin orbitdmd.local veya 192.168.0.152) ve web sayfasının parolası.",
+        "data": {
+          "host": "Panel adresi",
+          "password": "Web sayfası parolası"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "OrbitDMD paneli bulundu",
+        "description": "“{name}” paneli ağda bulundu ({host}). Bağlamak için web sayfasının parolasını girin.",
+        "data": {
+          "password": "Web sayfası parolası"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Panel parolayı reddediyor: web sayfasının güncel parolasını girin.",
+        "data": {
+          "password": "Web sayfası parolası"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Panele ulaşılamıyor: adresi ve açık olduğunu kontrol edin.",
+      "invalid_auth": "Yanlış parola."
+    },
+    "abort": {
+      "already_configured": "Bu panel zaten bağlı.",
+      "reauth_successful": "Parola güncellendi.",
+      "cannot_connect": "Panele ulaşılamıyor: adresi ve açık olduğunu kontrol edin.",
+      "not_orbitdmd": "Bu cihaz bir OrbitDMD paneli değil."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Duraklat"
+      },
+      "hourly_brightness": {
+        "name": "Saate göre parlaklık"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Saati göster"
+      },
+      "show_weather": {
+        "name": "Hava durumunu göster"
+      },
+      "restart": {
+        "name": "Yeniden başlat"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "Gösterilen GIF"
+      },
+      "screen": {
+        "name": "Ekran",
+        "state": {
+          "gif": "GIF",
+          "heure": "Saat",
+          "date": "Tarih",
+          "meteo": "Hava durumu",
+          "message": "Mesaj",
+          "texte": "Metin",
+          "compte": "Geri sayım",
+          "demarrage": "Başlangıç",
+          "mire": "Test deseni"
+        }
+      },
+      "temperature": {
+        "name": "İşlemci sıcaklığı"
+      },
+      "ip": {
+        "name": "IP adresi"
+      },
+      "version": {
+        "name": "Sürüm"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Mesaj"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Bildirim göster",
+      "description": "Panelde GIF'lerin üzerinde hemen bir metin ve/veya GIF gösterir.",
+      "fields": {
+        "device_id": {
+          "name": "Panel",
+          "description": "Kullanılacak paneller (boşsa hepsi)."
+        },
+        "message": {
+          "name": "Metin",
+          "description": "Kayan metin (en fazla 200 bayt)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "Metinden önceki GIF: Kategori/ad.gif"
+        },
+        "effect": {
+          "name": "Efekt",
+          "description": "Metnin gelişi."
+        },
+        "color": {
+          "name": "Renk",
+          "description": "Renk adı veya RRGGBB."
+        },
+        "speed": {
+          "name": "Hız",
+          "description": "1 (yavaş) ile 10 (hızlı) arası."
+        },
+        "passes": {
+          "name": "Geçişler",
+          "description": "GIF ve metnin geçiş sayısı (1 ile 10 arası)."
+        },
+        "font": {
+          "name": "Yazı tipi",
+          "description": "Pixel veya panelin bir yazı tipi dosyası."
+        },
+        "size": {
+          "name": "Boyut",
+          "description": "Piksel cinsinden boyut, 0 = otomatik."
+        },
+        "blink": {
+          "name": "Yanıp sönme",
+          "description": "Yanıp sönen metin (öncelikli uyarı)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "Sola",
+        "inverse": "Sağa",
+        "monte": "Yukarı",
+        "descend": "Aşağı",
+        "lettres": "Harf harf",
+        "pluie": "Harf yağmuru",
+        "fondu": "Solma"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Beyaz",
+        "rouge": "Kırmızı",
+        "orange": "Turuncu",
+        "ambre": "Kehribar",
+        "jaune": "Sarı",
+        "vert": "Yeşil",
+        "turquoise": "Turkuaz",
+        "bleu": "Mavi",
+        "violet": "Mor",
+        "rose": "Pembe",
+        "arc-en-ciel": "Gökkuşağı"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Bildirim göster"
+    },
+    "extra_fields": {
+      "message": "Metin",
+      "gif": "GIF",
+      "effect": "Efekt",
+      "color": "Renk",
+      "speed": "Hız",
+      "passes": "Geçişler",
+      "blink": "Yanıp sönme"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "OrbitDMD paneli “{name}” güncelleyin",
+      "description": "“{name}” panelinde {version} programı var. Entegrasyonun uyarıları gösterebilmesi için {minimum} veya daha yeni sürüm gerekir. En son programı indirin (aşağıdaki bağlantı) ve panelin web sayfasından yükleyin: Sistem → Yeni program."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "“{name}” panelinde {version} programı var: {minimum} veya daha yeni sürümü yükleyin (panelin web sayfası → Sistem → Yeni program)."
+    },
+    "no_panel": {
+      "message": "Bağlı OrbitDMD paneli yok."
+    },
+    "need_content": {
+      "message": "Bir metin veya GIF gerekli."
+    },
+    "panel_error": {
+      "message": "Panel reddetti: {error}"
+    }
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Collegare un pannello OrbitDMD",
+        "description": "Indirizzo del pannello (come nel browser, ad esempio orbitdmd.local o 192.168.0.152) e password della sua pagina web.",
+        "data": {
+          "host": "Indirizzo del pannello",
+          "password": "Password della pagina web"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Pannello OrbitDMD trovato",
+        "description": "Il pannello «{name}» è stato trovato in rete ({host}). Inserisci la password della sua pagina web per collegarlo.",
+        "data": {
+          "password": "Password della pagina web"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Il pannello rifiuta la password: inserisci la password attuale della sua pagina web.",
+        "data": {
+          "password": "Password della pagina web"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Pannello irraggiungibile: controlla l'indirizzo e che sia acceso.",
+      "invalid_auth": "Password errata."
+    },
+    "abort": {
+      "already_configured": "Questo pannello è già collegato.",
+      "reauth_successful": "Password aggiornata.",
+      "cannot_connect": "Pannello irraggiungibile: controlla l'indirizzo e che sia acceso.",
+      "not_orbitdmd": "Questo dispositivo non è un pannello OrbitDMD."
+    }
+  },
+  "entity": {
+    "switch": {
+      "pause": {
+        "name": "Pausa"
+      },
+      "hourly_brightness": {
+        "name": "Luminosità per ora"
+      }
+    },
+    "button": {
+      "show_clock": {
+        "name": "Mostra l'ora"
+      },
+      "show_weather": {
+        "name": "Mostra il meteo"
+      },
+      "restart": {
+        "name": "Riavvia"
+      }
+    },
+    "sensor": {
+      "gif": {
+        "name": "GIF mostrata"
+      },
+      "screen": {
+        "name": "Schermo",
+        "state": {
+          "gif": "GIF",
+          "heure": "Ora",
+          "date": "Data",
+          "meteo": "Meteo",
+          "message": "Messaggio",
+          "texte": "Testo",
+          "compte": "Conto alla rovescia",
+          "demarrage": "Avvio",
+          "mire": "Monoscopio"
+        }
+      },
+      "temperature": {
+        "name": "Temperatura del processore"
+      },
+      "ip": {
+        "name": "Indirizzo IP"
+      },
+      "version": {
+        "name": "Versione"
+      }
+    },
+    "notify": {
+      "message": {
+        "name": "Messaggio"
+      }
+    }
+  },
+  "services": {
+    "notify": {
+      "name": "Mostra una notifica",
+      "description": "Mostra subito un testo e/o una GIF sul pannello, sopra le GIF.",
+      "fields": {
+        "device_id": {
+          "name": "Pannello",
+          "description": "Pannelli da usare (tutti se vuoto)."
+        },
+        "message": {
+          "name": "Testo",
+          "description": "Testo che scorre (al massimo 200 byte)."
+        },
+        "gif": {
+          "name": "GIF",
+          "description": "GIF prima del testo: Categoria/nome.gif"
+        },
+        "effect": {
+          "name": "Effetto",
+          "description": "Arrivo del testo."
+        },
+        "color": {
+          "name": "Colore",
+          "description": "Nome del colore o RRGGBB."
+        },
+        "speed": {
+          "name": "Velocità",
+          "description": "Da 1 (lento) a 10 (veloce)."
+        },
+        "passes": {
+          "name": "Passaggi",
+          "description": "Numero di passaggi della GIF e del testo (da 1 a 10)."
+        },
+        "font": {
+          "name": "Carattere",
+          "description": "Pixel o un file di carattere del pannello."
+        },
+        "size": {
+          "name": "Dimensione",
+          "description": "Dimensione in pixel, 0 = automatica."
+        },
+        "blink": {
+          "name": "Lampeggio",
+          "description": "Testo lampeggiante (avviso prioritario)."
+        }
+      }
+    }
+  },
+  "selector": {
+    "effect": {
+      "options": {
+        "defile": "A sinistra",
+        "inverse": "A destra",
+        "monte": "Sale",
+        "descend": "Scende",
+        "lettres": "Lettera per lettera",
+        "pluie": "Pioggia di lettere",
+        "fondu": "Dissolvenza"
+      }
+    },
+    "color": {
+      "options": {
+        "blanc": "Bianco",
+        "rouge": "Rosso",
+        "orange": "Arancione",
+        "ambre": "Ambra",
+        "jaune": "Giallo",
+        "vert": "Verde",
+        "turquoise": "Turchese",
+        "bleu": "Blu",
+        "violet": "Viola",
+        "rose": "Rosa",
+        "arc-en-ciel": "Arcobaleno"
+      }
+    }
+  },
+  "device_automation": {
+    "action_type": {
+      "notify": "Mostra una notifica"
+    },
+    "extra_fields": {
+      "message": "Testo",
+      "gif": "GIF",
+      "effect": "Effetto",
+      "color": "Colore",
+      "speed": "Velocità",
+      "passes": "Passaggi",
+      "blink": "Lampeggio"
+    }
+  },
+  "issues": {
+    "panel_too_old": {
+      "title": "Aggiorna il pannello OrbitDMD «{name}»",
+      "description": "Il pannello «{name}» ha il programma {version}. L'integrazione richiede la versione {minimum} o successiva per mostrare gli avvisi. Scarica l'ultimo programma (link qui sotto) e installalo dalla pagina web del pannello: Sistema → Nuovo programma."
+    }
+  },
+  "exceptions": {
+    "panel_too_old": {
+      "message": "Il pannello «{name}» ha il programma {version}: installa la versione {minimum} o successiva (pagina web del pannello → Sistema → Nuovo programma)."
+    },
+    "no_panel": {
+      "message": "Nessun pannello OrbitDMD collegato."
+    },
+    "need_content": {
+      "message": "Serve un testo o una GIF."
+    },
+    "panel_error": {
+      "message": "Il pannello ha rifiutato: {error}"
+    }
+  }
+}
