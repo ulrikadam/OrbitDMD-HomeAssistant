@@ -265,6 +265,7 @@ img.gif:not([src]) { visibility:hidden; }
 .axdevs { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:8px; }
 .axdev { align-items:center; }
 .axev { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.axev label.lead { display:flex; align-items:center; gap:10px; }
 .axev.off { opacity:.75; }
 .axrow { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
 .axpv { width:320px; max-width:100%; flex:none; }
