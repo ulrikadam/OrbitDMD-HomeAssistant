@@ -7,6 +7,8 @@
 
 // textes en 12 langues : orbitdmd-i18n.js (meme empreinte "?v=" que ce fichier, pour le cache)
 const { pickLanguage } = await import(new URL(`./orbitdmd-i18n.js${new URL(import.meta.url).search}`, import.meta.url).href);
+// alertes Alexa (minuteurs, rappels, alarmes) : orbitdmd-alexa.js
+const AX = await import(new URL(`./orbitdmd-alexa.js${new URL(import.meta.url).search}`, import.meta.url).href);
 
 const EFFECTS = ["defile", "inverse", "monte", "descend", "lettres", "pluie", "fondu"];
 const PAGED = ["monte", "descend", "lettres", "pluie", "fondu"];   // texte en pages (les autres defilent)
@@ -260,6 +262,13 @@ img.gif:not([src]) { visibility:hidden; }
 @keyframes mq { from { transform:translateX(100cqw); } to { transform:translateX(-100%); } }
 @keyframes mqr { from { transform:translateX(-100%); } to { transform:translateX(100cqw); } }
 @keyframes bl { 64% { opacity:0; } }
+.axdevs { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:8px; }
+.axdev { align-items:center; }
+.axev { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.axev.off { opacity:.75; }
+.axrow { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+.axpv { width:320px; max-width:100%; flex:none; }
+.axnew { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 /* alertes */
 .alerts { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
 .alert { display:grid; grid-template-columns:200px 1fr auto; gap:14px; align-items:center; }
@@ -371,6 +380,9 @@ class OrbitDMDPanel extends HTMLElement {
       this._toast(fmt(this._t.error, err.message || err));
     }
     await this._loadConfigs();
+    if ((this._hass.config.components || []).includes("alexa_media")) {
+      try { this._axDevices = await AX.alexaDevices(this._hass); } catch (e) { this._axDevices = null; }
+    }
     this._render();
     this._categorizeAll();
   }
@@ -446,7 +458,7 @@ class OrbitDMDPanel extends HTMLElement {
       title="${esc(p.url)}">⚙ ${esc(panels.length > 1 ? fmt(t.admin_n, p.title) : t.admin)}</a>`).join("");
     this._renderBanner();
     if (!this._data.panels.length) { main.innerHTML = `<div class="card">${esc(t.no_panel)}</div>`; return; }
-    main.innerHTML = this._view === "home" ? this._home() : this._wizard();
+    main.innerHTML = this._view === "home" ? this._home() : this._view === "alexa" ? this._alexaView() : this._wizard();
     if (this._view === 1) this._renderGrid();
     if (this._view === 2) this._renderEntities();
     this._observe();
@@ -557,6 +569,7 @@ class OrbitDMDPanel extends HTMLElement {
     const t = this._t;
     const rows = this._autos().map((s) => {
       const cfg = this._configs[s.attributes.id];
+      if (cfg && AX.isAlexa(cfg)) return this._alexaRow(s, cfg);
       const d = cfg ? this._parse(cfg) : null;
       const on = s.state === "on";
       const last = s.attributes.last_triggered
@@ -588,7 +601,9 @@ class OrbitDMDPanel extends HTMLElement {
         </div></div>`;
     }).join("");
     return `<h2>${t.home_title}</h2><p class="help">${t.home_intro}</p>
-      <button class="primary" data-a="new">+ ${t.new}</button>
+      ${this._axNew().length ? `<div class="banner axnew">${esc(fmt(t.ax_new_device, this._axNew().map((d) => d.name).join(", ")))}
+        <button data-a="axadd">${t.ax_add}</button> <button data-a="axignore">${t.ax_ignore}</button></div>` : ""}
+      <div class="bar"><button class="primary" data-a="new">+ ${t.new}</button><button data-a="alexa">${t.ax_menu}</button></div>
       <div class="alerts">${rows || `<div class="card muted">${t.none}</div>`}</div>`;
   }
 
@@ -1119,7 +1134,7 @@ class OrbitDMDPanel extends HTMLElement {
   _refreshPreview() {
     const box = this.shadowRoot.getElementById("pvbox");
     if (box) box.innerHTML = this._previewHtml();
-    else if (this._view === 4 || this._view === "home") {
+    else if (this._view === 4 || this._view === "home" || this._view === "alexa") {
       // police ou mesure d'icone arrivee pendant l'etape 4 ou sur la liste : un seul rendu groupe
       if (!this._redraw) this._redraw = requestAnimationFrame(() => { this._redraw = 0; this._render(); });
       return;
@@ -1173,6 +1188,198 @@ class OrbitDMDPanel extends HTMLElement {
   }
 
   // ---------- donnees ----------
+
+  // ---------- menu Alexa ----------
+
+  // icones de notification du panneau choisi
+  _axIcons(device) {
+    return this._panelOf(device).gifs.filter((g) => g.split("/")[0] === ICON_CATEGORY);
+  }
+
+  async _openAlexa(add = []) {
+    try {
+      this._axDevices = await AX.alexaDevices(this._hass);
+    } catch (err) { this._axDevices = []; }
+    const panel = this._data.panels[0].device_id;
+    const s = AX.settingsFrom(Object.values(this._configs), this._t, this._axDevices, panel, this._axIcons(panel));
+    for (const id of add) if (!s.echos.includes(id)) s.echos.push(id);
+    this._ax = { settings: s, pick: null };
+    this._go("alexa");
+  }
+
+  // piece d'exemple pour l'apercu : celle du premier appareil coche
+  _axRoom() {
+    const s = this._ax.settings;
+    const d = (this._axDevices || []).find((x) => s.echos.includes(x.id));
+    return d ? d.area || d.name : "";
+  }
+
+  // brouillon d'apercu : icone + texte d'exemple, comme le panneau l'affichera
+  _axDraft(key, e, s, room) {
+    return { device: s.device, mode: "icon", icon: e.icon, gif: "", message: AX.sampleText(key, e, s, this._t, room),
+      color: e.color, effect: e.effect, priority: e.prio, speed: null, font: "", size: 0, lines: 1, entities: [], trig: "entity", calWord: "" };
+  }
+
+  _axPreview(key) {
+    const box = this.shadowRoot.getElementById(`axpv_${key}`);
+    if (!box) return;
+    const s = this._ax.settings;
+    box.innerHTML = this._marquee(this._axDraft(key, s.events[key], s, this._axRoom()));
+    this._observe();
+    this._tune();
+  }
+
+  _alexaView() {
+    const t = this._t, s = this._ax.settings, devices = this._axDevices || [];
+    const back = `<div class="nav"><button data-a="axback">${t.back}</button>`;
+    if (!devices.length) return `<h2>${t.ax_title}</h2><div class="card muted">${esc(t.ax_missing)}</div>${back}</div>`;
+    const panels = this._data.panels;
+    const panelSel = panels.length > 1 ? `<label class="field">${t.sum_panel}<select data-ax="panel">${panels.map((p) =>
+      `<option value="${esc(p.device_id)}" ${p.device_id === s.device ? "selected" : ""}>${esc(p.title)}</option>`).join("")}</select></label>` : "";
+    const devs = devices.map((d) => {
+      const off = (this._hass.states[d.timer] || {}).state === "unavailable";
+      const info = [d.model, d.area, off ? t.ax_offline : ""].filter(Boolean).join(" · ");
+      return `<label class="opt axdev"><input type="checkbox" data-ax="dev" data-dev="${esc(d.id)}" ${s.echos.includes(d.id) ? "checked" : ""}>
+        <span><b>${esc(d.name)}</b><br><small class="muted">${esc(info)}</small></span></label>`;
+    }).join("");
+    const room = this._axRoom();
+    const colorOpts = (sel) => Object.keys(COLORS).map((k) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.colors[k])}</option>`).join("");
+    const effectOpts = (sel) => EFFECTS.map((k) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.effects[k])}</option>`).join("");
+    const events = AX.EVENTS.map((ev) => {
+      const k = ev.key, e = s.events[k];
+      const head = `<label class="lead"><input type="checkbox" data-ax="on" data-ev="${k}" ${e.on ? "checked" : ""}><b>${esc(t[`ax_ev_${k}`])}</b></label>
+        <small class="muted">${esc(t[`ax_when_${k}`])}</small>`;
+      if (!e.on) return `<div class="card axev off">${head}</div>`;
+      const toks = ev.tokens.map((tok) => `<button data-a="axtok" data-ev="${k}" data-k="${tok}">+ ${esc(t[`ax_tok_${tok}`])}</button>`).join("");
+      const icons = this._ax.pick === k ? `<div class="icons">${this._axIcons(s.device).map((g) => `<button class="ico ${e.icon === g ? "on" : ""}"
+          data-a="axicon" data-ev="${k}" data-g="${esc(g)}" title="${esc(gifLabel(g))}">${this._screen(s.device, g, "icobox")}</button>`).join("")}</div>` : "";
+      return `<div class="card axev">${head}
+        <div class="axrow">
+          <div class="screen axpv" id="axpv_${k}">${this._marquee(this._axDraft(k, e, s, room))}</div>
+          <div class="grow">
+            <label class="field">${t.text}<input type="text" maxlength="200" data-ax="text" data-ev="${k}" value="${esc(e.text)}"></label>
+            <div class="bar">${toks}</div>
+            <div class="cols">
+              <label class="field">${t.color}<select data-ax="color" data-ev="${k}">${colorOpts(e.color)}</select></label>
+              <label class="field">${t.effect}<select data-ax="effect" data-ev="${k}">${effectOpts(e.effect)}</select></label>
+            </div>
+            <label class="opt"><input type="checkbox" data-ax="prio" data-ev="${k}" ${e.prio ? "checked" : ""}>${esc(t.ax_prio)}</label>
+            <div class="row"><div class="ico on">${this._screen(s.device, e.icon, "icobox")}</div>
+              <button class="link" data-a="axpick" data-ev="${k}">${t.change_icon}</button>
+              <button data-a="axtest" data-ev="${k}">▶ ${t.test_btn}</button></div>
+            ${icons}
+          </div>
+        </div></div>`;
+    }).join("");
+    return `<h2>${t.ax_title}</h2><p class="help">${esc(t.ax_help)}</p>${panelSel}
+      <h3>${t.ax_devices}</h3><p class="help">${esc(t.ax_devices_help)}</p><div class="axdevs">${devs}</div>
+      <h3>${t.ax_events}</h3>${events}
+      <h3>${t.ax_options}</h3>
+      <label class="opt"><input type="checkbox" data-ax="room" ${s.room ? "checked" : ""}>${esc(t.ax_room)}</label>
+      <div class="opt ${s.quiet ? "" : "off"}">
+        <label class="lead"><input type="checkbox" data-ax="quiet" ${s.quiet ? "checked" : ""}>${t.quiet}</label>
+        <input type="time" data-ax="qfrom" value="${esc(s.quietFrom)}" ${s.quiet ? "" : "disabled"}> ${t.to_h}
+        <input type="time" data-ax="qto" value="${esc(s.quietTo)}" ${s.quiet ? "" : "disabled"}>
+      </div>
+      <p class="help">${esc(t.ax_off_note)}</p>
+      ${back}<button class="primary" data-a="axsave">${t.ax_save}</button></div>`;
+  }
+
+  _axInput(el) {
+    const s = this._ax.settings, k = el.dataset.ev, e = k ? s.events[k] : null;
+    switch (el.dataset.ax) {
+      case "dev":
+        s.echos = el.checked ? s.echos.concat(el.dataset.dev) : s.echos.filter((x) => x !== el.dataset.dev);
+        for (const ev of AX.EVENTS) this._axPreview(ev.key);      // la piece d'exemple peut changer
+        return;
+      case "on": e.on = el.checked; this._render(); return;
+      case "text": e.text = el.value; break;
+      case "color": e.color = el.value; break;
+      case "effect": e.effect = el.value; break;
+      case "prio": e.prio = el.checked; break;
+      case "room": s.room = el.checked; for (const ev of AX.EVENTS) this._axPreview(ev.key); return;
+      case "quiet": s.quiet = el.checked; this._render(); return;
+      case "qfrom": if (el.value) s.quietFrom = el.value.slice(0, 5); return;
+      case "qto": if (el.value) s.quietTo = el.value.slice(0, 5); return;
+      case "panel": s.device = el.value; this._render(); return;
+    }
+    if (k) this._axPreview(k);
+  }
+
+  // donnees envoyees au panneau pour "Tester" (texte d'exemple)
+  _axNotify(key, e, s, room) {
+    const data = { device_id: [s.device], icon: e.icon, message: AX.sampleText(key, e, s, this._t, room), color: e.color, effect: e.effect };
+    if (e.prio) { data.blink = true; data.passes = 2; }
+    return data;
+  }
+
+  async _axSendData(data) {
+    try {
+      await this._hass.callWS({ type: "execute_script", sequence: [{ action: "orbitdmd.notify", data }] });
+      this._toast(this._t.sent);
+    } catch (err) { this._toast(fmt(this._t.error, err.message || err.code || err)); }
+  }
+
+  async _axSave() {
+    const t = this._t, s = this._ax.settings;
+    if (!s.echos.length) { this._toast(t.ax_need_device); return; }
+    const { save, remove } = AX.alexaConfigs(s, this._axDevices, t);
+    try {
+      for (const id of remove) {
+        if (!this._configs[id]) continue;
+        await this._hass.callApi("DELETE", `config/automation/config/${id}`);
+        delete this._configs[id];
+      }
+      for (const [id, cfg] of Object.entries(save)) {
+        await this._hass.callApi("POST", `config/automation/config/${id}`, cfg);
+        this._configs[id] = cfg;
+      }
+      this._toast(t.ax_saved);
+      this._go("home");
+      for (const id of Object.keys(save)) await this._categorizeId(id);
+    } catch (err) { this._toast(fmt(t.error, err.message || err.body?.message || err)); }
+  }
+
+  // nouveaux Echo pas encore dans les alertes Alexa (et pas ignores sur ce navigateur)
+  _axNew() {
+    const cfgs = Object.values(this._configs).filter(AX.isAlexa);
+    if (!cfgs.length || !this._axDevices || this._axHidden) return [];
+    const echos = cfgs[0].variables.orbitdmd.echos || [];
+    let ignored = [];
+    try { ignored = JSON.parse(localStorage.getItem("orbitdmd_alexa_ignore") || "[]"); } catch (e) { ignored = []; }
+    return this._axDevices.filter((d) => d.echo && !echos.includes(d.id) && !ignored.includes(d.id));
+  }
+
+  // une alerte Alexa dans la liste : apercu, quand, appareils ; "Modifier" ouvre le menu Alexa
+  _alexaRow(s, cfg) {
+    const t = this._t, m = cfg.variables.orbitdmd, k = m.event;
+    const notify = (cfg.actions || []).find((a) => a && a.action === "orbitdmd.notify") || { data: {} };
+    const set = { device: (notify.data.device_id || [])[0] || this._data.panels[0].device_id, room: !!m.room };
+    const e = { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio };
+    const dev = (this._axDevices || []).find((x) => (m.echos || []).includes(x.id));
+    const room = dev ? dev.area || dev.name : "";
+    const on = s.state === "on";
+    const last = s.attributes.last_triggered
+      ? fmt(t.last, new Date(s.attributes.last_triggered).toLocaleString(this._hass.language)) : t.never;
+    const armed = this._confirm === s.attributes.id;
+    const id = esc(s.attributes.id);
+    const badges = `<span class="badge">${t.b_alexa}</span><span class="badge">${esc(fmt(t.ax_n_devices, (m.echos || []).length))}</span>`
+      + (m.prio ? `<span class="badge prio">${t.b_prio}</span>` : "")
+      + (m.quiet && !m.prio ? `<span class="badge">${esc(fmt(t.b_quiet, m.quiet_from, m.quiet_to))}</span>` : "");
+    return `<div class="card alert ${on ? "" : "off"}">
+      <div class="screen" style="border-radius:6px">${this._marquee(this._axDraft(k, e, set, room))}</div>
+      <div class="info"><b>${esc(String(s.attributes.friendly_name || "").replace(/^OrbitDMD\s*[–-]\s*/, ""))}</b>
+        <span>${esc(t[`ax_when_${k}`] || "")}</span>
+        <span>« ${esc(AX.sampleText(k, e, set, t, room))} »</span>
+        <span>${esc(last)}</span>
+        <div class="badges">${badges}</div></div>
+      <div class="acts">
+        <label class="toggle" title="${esc(s.entity_id)}"><input type="checkbox" data-a="toggle" data-e="${esc(s.entity_id)}" ${on ? "checked" : ""}><i></i></label>
+        <button data-a="axtestauto" data-id="${id}">${t.test}</button>
+        <button data-a="alexa">${t.edit}</button>
+        <button class="danger ${armed ? "armed" : ""}" data-a="del" data-id="${id}">${armed ? t.confirm_del : t.del}</button>
+      </div></div>`;
+  }
 
   _newDraft() {
     return { id: null, device: this._data.panels[0].device_id, gif: "", entities: [], to: null, message: "",
@@ -1353,6 +1560,34 @@ class OrbitDMDPanel extends HTMLElement {
     if (a !== "del") this._confirm = null;
     switch (a) {
       case "new": this._openDraft(this._newDraft(), 1); break;
+      case "alexa": await this._openAlexa(); break;
+      case "axback": this._go("home"); break;
+      case "axsave": await this._axSave(); break;
+      case "axpick": this._ax.pick = this._ax.pick === b.dataset.ev ? null : b.dataset.ev; this._render(); break;
+      case "axicon": this._ax.settings.events[b.dataset.ev].icon = b.dataset.g; this._ax.pick = null; this._render(); break;
+      case "axtok": {
+        const ev = this._ax.settings.events[b.dataset.ev];
+        ev.text = `${ev.text}${ev.text && !/\s$/.test(ev.text) ? " " : ""}{${b.dataset.k}}`;
+        const i = this.shadowRoot.querySelector(`input[data-ax="text"][data-ev="${b.dataset.ev}"]`);
+        if (i) { i.value = ev.text; i.focus(); }
+        this._axPreview(b.dataset.ev); break;
+      }
+      case "axtest": { const st = this._ax.settings; await this._axSendData(this._axNotify(b.dataset.ev, st.events[b.dataset.ev], st, this._axRoom())); break; }
+      case "axtestauto": {
+        const m = this._configs[b.dataset.id].variables.orbitdmd;
+        const n = (this._configs[b.dataset.id].actions || []).find((x) => x && x.action === "orbitdmd.notify") || { data: {} };
+        const dev = (this._axDevices || []).find((x) => (m.echos || []).includes(x.id));
+        await this._axSendData(this._axNotify(m.event, { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio },
+          { device: (n.data.device_id || [])[0], room: !!m.room }, dev ? dev.area || dev.name : ""));
+        break;
+      }
+      case "axadd": await this._openAlexa(this._axNew().map((x) => x.id)); break;
+      case "axignore":
+        try {
+          const ig = JSON.parse(localStorage.getItem("orbitdmd_alexa_ignore") || "[]");
+          localStorage.setItem("orbitdmd_alexa_ignore", JSON.stringify(ig.concat(this._axNew().map((x) => x.id))));
+        } catch (err) { /* navigateur sans stockage */ }
+        this._axHidden = true; this._render(); break;
       case "edit": this._openDraft(this._parse(this._configs[b.dataset.id]), 1); this._scrollSel = true; this._renderGrid(); break;
       case "dup": {   // copie : meme panneau, GIF, entites et message ; on change l'etat (ex. ON -> OFF)
         const copy = this._parse(this._configs[b.dataset.id]);
@@ -1456,6 +1691,7 @@ class OrbitDMDPanel extends HTMLElement {
 
   _input(e) {
     const el = e.target, d = this._draft;
+    if (el.dataset && el.dataset.ax) { if (e.type === "input") this._axInput(el); return; }
     if (!el.id) return;
     // "change" arrive quand le champ perd le focus, juste avant le clic : ne rien redessiner a ce moment-la,
     // sinon l'element clique disparait et le clic est perdu

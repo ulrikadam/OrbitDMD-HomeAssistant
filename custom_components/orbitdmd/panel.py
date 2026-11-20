@@ -45,7 +45,7 @@ class FrontendView(HomeAssistantView):
 
 
 # orbitdmd-pixel.ttf : la police "Pixel" du panneau (5x7), pour l'apercu des messages
-FRONTEND_FILES = ("orbitdmd-panel.js", "orbitdmd-i18n.js", "orbitdmd-pixel.ttf")
+FRONTEND_FILES = ("orbitdmd-panel.js", "orbitdmd-i18n.js", "orbitdmd-alexa.js", "orbitdmd-pixel.ttf")
 
 
 async def async_setup_panel(hass: HomeAssistant) -> None:
