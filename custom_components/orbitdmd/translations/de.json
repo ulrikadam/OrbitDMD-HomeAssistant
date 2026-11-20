@@ -133,6 +133,14 @@
         "blink": {
           "name": "Blinken",
           "description": "Blinkender Text (prioritäre Meldung)."
+        },
+        "icon": {
+          "name": "Symbol",
+          "description": "Kleines animiertes GIF links vom Text: Icones/name.gif (der Text läuft daneben)."
+        },
+        "lines": {
+          "name": "Zeilen",
+          "description": "2: der Text auf zwei Zeilen untereinander (Effekte Hoch, Runter, Buchstabe für Buchstabe, Regen, Überblenden)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Farbe",
       "speed": "Geschwindigkeit",
       "passes": "Durchläufe",
-      "blink": "Blinken"
+      "blink": "Blinken",
+      "icon": "Symbol"
     }
   },
   "issues": {

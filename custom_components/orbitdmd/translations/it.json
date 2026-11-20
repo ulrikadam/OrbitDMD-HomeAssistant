@@ -133,6 +133,14 @@
         "blink": {
           "name": "Lampeggio",
           "description": "Testo lampeggiante (avviso prioritario)."
+        },
+        "icon": {
+          "name": "Icona",
+          "description": "Piccola GIF animata a sinistra del testo: Icones/nome.gif (il testo scorre accanto)."
+        },
+        "lines": {
+          "name": "Righe",
+          "description": "2: il testo su due righe, una sotto l'altra (effetti Sale, Scende, Lettera per lettera, Pioggia, Dissolvenza)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Colore",
       "speed": "Velocità",
       "passes": "Passaggi",
-      "blink": "Lampeggio"
+      "blink": "Lampeggio",
+      "icon": "Icona"
     }
   },
   "issues": {

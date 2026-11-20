@@ -92,6 +92,22 @@ class OrbitDMDApi:
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 raise OrbitDMDError(f"{gif} : {err}") from err
 
+    async def fonts(self) -> list[str]:
+        """Polices TTF/OTF du panneau (page Horloge), par exemple "Orbitron.ttf"."""
+        data = await self._get_json("/api/horloge/fichiers")
+        return [f for f in data.get("polices", []) if isinstance(f, str)]
+
+    async def font_data(self, name: str) -> bytes:
+        """Fichier d'une police (apercu du texte avec la vraie police ; panneau 1.7.0 ou plus)."""
+        async with self._gif_slots:
+            try:
+                async with self._session.get(self.base + "/fonts/voir", params={"f": name},
+                                             timeout=TIMEOUT) as r:
+                    r.raise_for_status()
+                    return await r.read()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                raise OrbitDMDError(f"{name} : {err}") from err
+
     def gif_url(self, gif: str) -> str:
         cat, _, name = gif.partition("/")
         return f"{self.base}/gif/voir?c={cat}&f={name}"

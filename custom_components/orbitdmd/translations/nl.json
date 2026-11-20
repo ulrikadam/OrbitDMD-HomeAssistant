@@ -133,6 +133,14 @@
         "blink": {
           "name": "Knipperen",
           "description": "Knipperende tekst (prioritaire melding)."
+        },
+        "icon": {
+          "name": "Pictogram",
+          "description": "Kleine geanimeerde GIF links van de tekst: Icones/naam.gif (de tekst schuift ernaast)."
+        },
+        "lines": {
+          "name": "Regels",
+          "description": "2: de tekst op twee regels onder elkaar (effecten Omhoog, Omlaag, Letter voor letter, Regen, Vervagen)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Kleur",
       "speed": "Snelheid",
       "passes": "Doorgangen",
-      "blink": "Knipperen"
+      "blink": "Knipperen",
+      "icon": "Pictogram"
     }
   },
   "issues": {

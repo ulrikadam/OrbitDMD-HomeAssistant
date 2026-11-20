@@ -133,6 +133,14 @@
         "blink": {
           "name": "Blikání",
           "description": "Blikající text (prioritní upozornění)."
+        },
+        "icon": {
+          "name": "Ikona",
+          "description": "Malý animovaný GIF vlevo od textu: Icones/název.gif (text běží vedle)."
+        },
+        "lines": {
+          "name": "Řádky",
+          "description": "2: text na dvou řádcích pod sebou (efekty Nahoru, Dolů, Písmeno po písmenu, Déšť, Prolínání)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Barva",
       "speed": "Rychlost",
       "passes": "Průchody",
-      "blink": "Blikání"
+      "blink": "Blikání",
+      "icon": "Ikona"
     }
   },
   "issues": {

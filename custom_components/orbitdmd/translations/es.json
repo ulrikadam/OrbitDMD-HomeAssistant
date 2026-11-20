@@ -133,6 +133,14 @@
         "blink": {
           "name": "Parpadeo",
           "description": "Texto parpadeante (alerta prioritaria)."
+        },
+        "icon": {
+          "name": "Icono",
+          "description": "GIF animado pequeño a la izquierda del texto: Icones/nombre.gif (el texto se desplaza al lado)."
+        },
+        "lines": {
+          "name": "Líneas",
+          "description": "2: el texto en dos líneas, una debajo de otra (efectos Sube, Baja, Letra a letra, Lluvia, Fundido)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Color",
       "speed": "Velocidad",
       "passes": "Pasadas",
-      "blink": "Parpadeo"
+      "blink": "Parpadeo",
+      "icon": "Icono"
     }
   },
   "issues": {

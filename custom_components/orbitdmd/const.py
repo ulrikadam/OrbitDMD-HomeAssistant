@@ -33,7 +33,10 @@ ATTR_SPEED = "speed"
 ATTR_PASSES = "passes"
 ATTR_FONT = "font"
 ATTR_SIZE = "size"
+ATTR_LINES = "lines"       # 2 : deux lignes par page (effets en pages ; panneau 1.7.0+)
 ATTR_BLINK = "blink"
+ATTR_ICON = "icon"
+ICON_CATEGORY = "Icones"          # petites GIF a gauche du texte ("icone", panneau 1.7.0+)
 
 
 def version_tuple(version: str | None) -> tuple[int, ...]:

@@ -15,7 +15,7 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers.translation import async_get_translations
 
 from . import coordinators_for, send_notification
-from .const import (ATTR_BLINK, ATTR_COLOR, ATTR_EFFECT, ATTR_GIF, ATTR_MESSAGE, ATTR_PASSES, ATTR_SPEED, COLORS, DOMAIN,
+from .const import (ATTR_BLINK, ATTR_COLOR, ATTR_ICON, ICON_CATEGORY, ATTR_EFFECT, ATTR_GIF, ATTR_MESSAGE, ATTR_PASSES, ATTR_SPEED, COLORS, DOMAIN,
                     EFFECTS)
 
 ACTION_NOTIFY = "notify"
@@ -29,6 +29,7 @@ ACTION_SCHEMA = cv.DEVICE_ACTION_BASE_SCHEMA.extend({
     vol.Optional(ATTR_SPEED): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
     vol.Optional(ATTR_PASSES): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
     vol.Optional(ATTR_BLINK): cv.boolean,
+    vol.Optional(ATTR_ICON): cv.string,
 })
 
 
@@ -56,6 +57,9 @@ async def async_get_action_capabilities(hass: HomeAssistant, config: dict[str, A
     fields[vol.Optional(ATTR_SPEED)] = vol.All(vol.Coerce(int), vol.Range(min=1, max=10))
     fields[vol.Optional(ATTR_PASSES)] = vol.All(vol.Coerce(int), vol.Range(min=1, max=10))
     fields[vol.Optional(ATTR_BLINK)] = bool
+    icons = [g for g in gifs if g.split("/")[0] == ICON_CATEGORY]
+    if icons:      # icone a gauche du texte (categorie Icones du panneau)
+        fields[vol.Optional(ATTR_ICON)] = vol.In(icons)
     return {"extra_fields": vol.Schema(fields)}
 
 

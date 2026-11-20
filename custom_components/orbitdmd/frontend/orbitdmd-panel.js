@@ -9,6 +9,21 @@
 const { pickLanguage } = await import(new URL(`./orbitdmd-i18n.js${new URL(import.meta.url).search}`, import.meta.url).href);
 
 const EFFECTS = ["defile", "inverse", "monte", "descend", "lettres", "pluie", "fondu"];
+const PAGED = ["monte", "descend", "lettres", "pluie", "fondu"];   // texte en pages (les autres defilent)
+const SIZES = [8, 10, 12, 14, 16, 18, 20, 22, 24, 28, 32];        // taille du texte en pixels du panneau
+const PIXEL = "Pixel";
+const PIXEL_FAMILY = "odmd-pixel";                               // police Pixel du panneau, en police web
+const ICON_WIDTH = 32;
+const LINE_GAP = 2;                                              // pixels entre les deux lignes d'une page                                           // largeur habituelle d'une icone (pixels)                                           // police 5x7 integree au panneau
+const DEFAULT_SPEED = 4;                                         // vitesse des notifications du panneau
+// nom lisible d'une police ("BlackOpsOne.ttf" -> "Black Ops One"), comme la page Horloge du panneau
+const FONT_NAMES = { pressstart2p: "Press Start 2P", vt323: "VT323", blackopsone: "Black Ops One", russoone: "Russo One",
+  mountainsofchristmas: "Mountains of Christmas", "orbitdmd-led": "OrbitDMD LED", "orbitdmd-gras": "OrbitDMD Gras",
+  "orbitdmd-segments": "OrbitDMD 7 segments", goudysto: "Goudy Stout" };
+const fontLabel = (f) => {
+  const base = f.replace(/^.*\//, "").replace(/\.(ttf|otf)$/i, "");
+  return FONT_NAMES[base.toLowerCase()] || base.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+};
 const COLORS = {
   blanc: "#ffffff", rouge: "#ff2a2a", orange: "#ff8a00", ambre: "#ffb800", jaune: "#ffee00", vert: "#2bff3a",
   turquoise: "#22e3d2", bleu: "#3a6bff", violet: "#a24bff", rose: "#ff52b4",
@@ -26,10 +41,127 @@ const STATES = {
 const SUGGESTED = ["event", "binary_sensor", "lock", "cover", "alarm_control_panel", "person", "input_boolean", "switch", "vacuum"];
 const COOLDOWNS = [0, 1, 2, 5, 10, 15, 30, 60];
 const REPEATS = [0, 1, 2, 5, 10];
-const MAX_REPEATS = 30;      // une alerte prioritaire se repete 30 fois au plus
+const ICON_CATEGORY = "Icones";   // petites GIF a gauche du texte (panneau 1.7.0+)
+const MAX_REPEATS = 30;
+const FOR_MINUTES = [0, 1, 2, 5, 10, 15, 30, 60];          // "pendant au moins"
+const SUN_OFFSETS = [-120, -60, -30, -15, 0, 15, 30, 60, 120];   // minutes avant (-) ou apres (+)
+const CAL_OFFSETS = [0, 5, 15, 30, 60, 120, 180, 720, 1440];           // minutes avant l'evenement
+const ENTITY_TRIGS = ["entity", "value"];
+// "a intervalle regulier" : en minutes (moins de 60 : X fois par heure ; sinon toutes les X heures)
+const PERIODS = [10, 15, 20, 30, 60, 120, 180, 240, 360, 720];                    // declencheurs bases sur des entites
+// minutes -> "01:30:00" (ou "-00:30:00") pour Home Assistant, et retour
+const hms = (min) => `${min < 0 ? "-" : ""}${String(Math.floor(Math.abs(min) / 60)).padStart(2, "0")}:${String(Math.abs(min) % 60).padStart(2, "0")}:00`;
+const fromHms = (v) => {
+  if (typeof v === "number") return v;
+  const m = String(v || "").match(/^(-?)(\d+):(\d+)/);
+  return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0;
+};
+const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];   // cles des jours dans Home Assistant
+// numero de semaine ISO (comme now().isocalendar()[1] dans Home Assistant)
+const isoWeek = (date) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  return Math.ceil(((d - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+};      // une alerte prioritaire se repete 30 fois au plus
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+// images d'une GIF (RGBA), avec ses etapes d'animation : decodeur de la page GIF du panneau
+// (dmd/web/gifscale.js, verifie identique a Pillow) ; ImageDecoder n'existe pas en http
+const GifFrames = {
+	/* --- decodage : images completes (RGBA) apres chaque etape de l'animation --- */
+	decode (bytes) {
+		let p = 13;
+		const W = bytes[6] | bytes[7] << 8, H = bytes[8] | bytes[9] << 8, flags = bytes[10];
+		const readTable = n => { const t = bytes.subarray(p, p + n * 3); p += n * 3; return t; };
+		const global = flags & 0x80 ? readTable(1 << ((flags & 7) + 1)) : null;
+		const canvas = new Uint8ClampedArray(W * H * 4);	/* fond transparent */
+		const frames = [];
+		let gce = { disposal: 0, transparent: -1, delay: 10 };
+
+		while (p < bytes.length) {
+			const b = bytes[p++];
+			if (b === 0x3B) break;
+			if (b === 0x21) {
+				const label = bytes[p++];
+				if (label === 0xF9 && bytes[p] >= 4) {
+					const f = bytes[p + 1];
+					gce = { disposal: f >> 2 & 7, transparent: f & 1 ? bytes[p + 4] : -1, delay: bytes[p + 2] | bytes[p + 3] << 8 };
+				}
+				while (bytes[p]) p += bytes[p] + 1;	/* sous-blocs */
+				p++;
+				continue;
+			}
+			if (b !== 0x2C) throw new Error("GIF illisible");
+
+			const x0 = bytes[p] | bytes[p + 1] << 8, y0 = bytes[p + 2] | bytes[p + 3] << 8;
+			const fw = bytes[p + 4] | bytes[p + 5] << 8, fh = bytes[p + 6] | bytes[p + 7] << 8, ff = bytes[p + 8];
+			p += 9;
+			const table = ff & 0x80 ? readTable(1 << ((ff & 7) + 1)) : global;
+			if (!table) throw new Error("GIF sans palette");
+			const minCode = bytes[p++];
+			/* donnees : sous-blocs mis bout a bout */
+			let len = 0, q = p;
+			while (bytes[q]) { len += bytes[q]; q += bytes[q] + 1; }
+			const data = new Uint8Array(len);
+			for (let o = 0; bytes[p]; p += bytes[p] + 1) { data.set(bytes.subarray(p + 1, p + 1 + bytes[p]), o); o += bytes[p]; }
+			p++;
+			const pixels = GifFrames.lzwDecode(data, minCode, fw * fh);
+
+			const previous = gce.disposal === 3 ? canvas.slice() : null;
+			/* lignes entrelacees : ordre 0,8,16.. 4,12.. 2,6.. 1,3.. */
+			const rows = [];
+			if (ff & 0x40) { for (const [s, d] of [[0, 8], [4, 8], [2, 4], [1, 2]]) for (let y = s; y < fh; y += d) rows.push(y); }
+			else for (let y = 0; y < fh; y++) rows.push(y);
+			for (let r = 0; r < fh; r++) {
+				const y = y0 + rows[r];
+				if (y >= H) continue;
+				for (let x = 0; x < fw; x++) {
+					const idx = pixels[r * fw + x];
+					if (idx === gce.transparent || x0 + x >= W) continue;
+					const o = (y * W + x0 + x) * 4;
+					canvas[o] = table[idx * 3]; canvas[o + 1] = table[idx * 3 + 1]; canvas[o + 2] = table[idx * 3 + 2]; canvas[o + 3] = 255;
+				}
+			}
+			frames.push({ rgba: canvas.slice(), delay: gce.delay });
+
+			if (gce.disposal === 2) {
+				for (let y = y0; y < Math.min(H, y0 + fh); y++) canvas.fill(0, (y * W + x0) * 4, (y * W + Math.min(W, x0 + fw)) * 4);
+			} else if (gce.disposal === 3 && previous) canvas.set(previous);
+			gce = { disposal: 0, transparent: -1, delay: 10 };
+		}
+		if (!frames.length) throw new Error("GIF sans image");
+		return { w: W, h: H, frames };
+	},
+
+	lzwDecode (data, minCode, count) {
+		const out = new Uint8Array(count);
+		const clear = 1 << minCode, end = clear + 1;
+		const prefix = new Int16Array(4096), suffix = new Uint8Array(4096), first = new Uint8Array(4096);
+		const stack = new Uint8Array(4097);
+		for (let i = 0; i < clear; i++) { prefix[i] = -1; suffix[i] = i; first[i] = i; }
+		let size = minCode + 1, next = end + 1, old = -1, bits = 0, acc = 0, n = 0, pos = 0;
+		while (n < count) {
+			while (bits < size && pos < data.length) { acc |= data[pos++] << bits; bits += 8; }
+			if (bits < size) break;
+			const code = acc & ((1 << size) - 1);
+			acc >>>= size; bits -= size;
+			if (code === clear) { size = minCode + 1; next = end + 1; old = -1; continue; }
+			if (code === end) break;
+			let c = code, sp = 0;
+			if (old === -1) { if (code >= clear) break; out[n++] = code; old = code; continue; }
+			if (code >= next) { stack[sp++] = first[old]; c = old; }	/* code pas encore connu */
+			while (c >= clear) { stack[sp++] = suffix[c]; c = prefix[c]; }
+			stack[sp++] = c;
+			if (next < 4096) { prefix[next] = old; suffix[next] = c; first[next] = first[old]; next++; }
+			while (sp && n < count) out[n++] = stack[--sp];
+			if (next === 1 << size && size < 12) size++;
+			old = code;
+		}
+		return out;
+	}
+};
+
 const fmt = (s, ...a) => a.reduce((r, v) => r.replace("{}", v), s);
 const gifLabel = (g) => (g || "").split("/").slice(1).join("/").replace(/\.gif$/i, "").replace(/_/g, " ");
 const hhmm = (v, dflt) => (/^\d{2}:\d{2}/.test(v || "") ? v.slice(0, 5) : dflt);
@@ -60,9 +192,9 @@ button.primary { background:var(--primary-color); border-color:var(--primary-col
 button.danger { color:var(--error-color, #db4437); }
 button.danger.armed { background:var(--error-color, #db4437); color:#fff; border-color:transparent; }
 button.link { border:none; background:none; color:var(--primary-color); padding:6px 0; }
-input[type=text], input[type=search], input[type=time], select { font:inherit; color:var(--primary-text-color); background:var(--secondary-background-color, transparent);
+input[type=text], input[type=search], input[type=time], input[type=number], select { font:inherit; color:var(--primary-text-color); background:var(--secondary-background-color, transparent);
   border:1px solid var(--divider-color); border-radius:8px; padding:9px 12px; box-sizing:border-box; }
-input[type=text]:focus, input[type=search]:focus, input[type=time]:focus, select:focus { outline:2px solid var(--primary-color); border-color:transparent; }
+input[type=text]:focus, input[type=search]:focus, input[type=time]:focus, input[type=number]:focus, select:focus { outline:2px solid var(--primary-color); border-color:transparent; }
 input[type=checkbox] { width:18px; height:18px; accent-color:var(--primary-color); margin:0; }
 label.field { display:flex; flex-direction:column; gap:6px; font-size:14px; color:var(--secondary-text-color); }
 .opt { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 0; border-top:1px solid var(--divider-color); }
@@ -111,9 +243,22 @@ img.gif:not([src]) { visibility:hidden; }
 .screen { background:#000; aspect-ratio:4/1; border-radius:6px; overflow:hidden; position:relative; display:flex; align-items:center;
   justify-content:center; color:#888; }
 #pv { justify-content:flex-start; }
-.marquee { white-space:nowrap; font:bold 30px/1 "Courier New", monospace; letter-spacing:2px; padding-left:100%; animation:mq 7s linear infinite; }
-.marquee.blink { animation:mq 7s linear infinite, bl .7s step-end infinite; }
-@keyframes mq { to { transform:translateX(-100%); } }
+.pvicon { position:absolute; left:0; top:0; bottom:0; aspect-ratio:1; background:#000; z-index:1; }
+.icobox { width:100%; height:100%; }
+.icons { display:flex; gap:8px; flex-wrap:wrap; }
+.ico { width:64px; height:64px; padding:4px; background:#000; color:#999; font-size:12px; display:flex; align-items:center;
+  justify-content:center; border:2px solid var(--divider-color); }
+.ico.on { border-color:var(--primary-color); outline:2px solid var(--primary-color); }
+.screen { container-type:size; }
+/* texte de l'apercu : 100cqh = hauteur du panneau (32 pixels) ; l'animation est posee par _marquee() */
+.pvtext, .blinker { position:absolute; inset:0; }
+.blinker { animation:bl .7s step-end infinite; }
+.marquee { position:absolute; left:0; top:0; bottom:0; display:flex; align-items:center; white-space:nowrap; line-height:1; }
+.marquee.page { right:0; display:grid; place-items:center; overflow:hidden; }
+.marquee.page > .t { grid-area:1/1; }
+.marquee .t, .marquee .l { display:inline-block; white-space:pre; }
+@keyframes mq { from { transform:translateX(100cqw); } to { transform:translateX(-100%); } }
+@keyframes mqr { from { transform:translateX(-100%); } to { transform:translateX(100cqw); } }
 @keyframes bl { 64% { opacity:0; } }
 /* alertes */
 .alerts { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
@@ -305,6 +450,7 @@ class OrbitDMDPanel extends HTMLElement {
     if (this._view === 1) this._renderGrid();
     if (this._view === 2) this._renderEntities();
     this._observe();
+    this._tune();
   }
 
   _panelOf(deviceId) {
@@ -337,12 +483,72 @@ class OrbitDMDPanel extends HTMLElement {
 
   _names(d) { return d.entities.map((e) => this._name(e)).join(this._t.or); }
 
+  // nom d'un jour dans la langue de Home Assistant (le 1er janvier 2024 est un lundi)
+  _dayName(key, form = "long") {
+    const i = WEEKDAYS.indexOf(key);
+    return new Date(2024, 0, 1 + i).toLocaleDateString(this._hass.language, { weekday: form });
+  }
+
+  _timeText(d) {
+    const t = this._t;
+    const days = d.days.length === 7 ? t.every_day
+      : WEEKDAYS.filter((k) => d.days.includes(k)).map((k) => this._dayName(k)).join(", ");
+    return fmt(t.when_time, days, d.time) + (d.every === 2 ? t.when_biweekly : "");
+  }
+
+  // duree lisible : "30 min", "2 h", "1 jour"
+  _dur(m) {
+    const t = this._t;
+    return m >= 1440 ? fmt(t.days_n, m / 1440) : m >= 60 && m % 60 === 0 ? fmt(t.hours_n, m / 60) : fmt(t.minutes, m);
+  }
+
+  _unit(d) {
+    const so = this._hass.states[d.entities[0]];
+    return (so && so.attributes.unit_of_measurement) || "";
+  }
+
   _whenText(d) {
+    const t = this._t;
+    const forText = ENTITY_TRIGS.includes(d.trig) && d.forMin ? fmt(t.for_suffix, this._dur(d.forMin)) : "";
+    if (d.trig === "time") return this._timeText(d);
+    if (d.trig === "periodic") return this._periodText(d.perEvery);
+    if (d.trig === "sun") {
+      const up = d.sunEvent === "sunrise";
+      if (!d.sunOffset) return up ? t.when_sunrise : t.when_sunset;
+      const key = `when_${up ? "sunrise" : "sunset"}_${d.sunOffset < 0 ? "before" : "after"}`;
+      return fmt(t[key], this._dur(Math.abs(d.sunOffset)));
+    }
+    if (d.trig === "calendar") {
+      const cal = this._name(d.calendar);
+      return fmt(d.calEvent === "end" ? t.when_cal_end : t.when_cal_start, cal)
+        + (d.calWord.trim() ? fmt(t.cal_word_suffix, d.calWord.trim()) : "")
+        + (d.calOffset ? fmt(t.cal_before_suffix, this._dur(d.calOffset)) : "");
+    }
     const n = this._names(d);
-    return d.to === null ? fmt(this._t.when_any, n) : fmt(this._t.when_to, n, this._state(d.entities[0], d.to));
+    if (d.trig === "value") {
+      return fmt(d.cmp === "above" ? t.when_above : t.when_below, n, `${d.threshold} ${this._unit(d)}`.trim()) + forText;
+    }
+    return (d.to === null ? fmt(t.when_any, n) : fmt(t.when_to, n, this._state(d.entities[0], d.to))) + forText;
+  }
+
+  // "6 fois par heure (toutes les 10 min)", "Toutes les heures", "Toutes les 2 heures"
+  _periodText(m) {
+    const t = this._t;
+    if (m < 60) return fmt(t.per_hour, 60 / m, m);
+    return m === 60 ? t.per_1h : fmt(t.per_nh, m / 60);
   }
 
   _autoName(d) {
+    const what = gifLabel(d.icon && d.mode === "icon" ? d.icon : d.gif) || d.message || "OrbitDMD";
+    if (d.trig === "sun" || d.trig === "calendar" || d.trig === "periodic") return `${what} – ${this._whenText(d)}`;
+    if (d.trig === "value") {
+      return `${d.entities.map((e) => this._name(e)).join(" / ")} – ${d.cmp === "above" ? ">" : "<"} ${d.threshold} ${this._unit(d)}`.trim();
+    }
+    if (d.trig === "time") {
+      const days = d.days.length === 7 ? this._t.every_day
+        : WEEKDAYS.filter((k) => d.days.includes(k)).map((k) => this._dayName(k, "short")).join(", ");
+      return `${gifLabel(d.icon && d.mode === "icon" ? d.icon : d.gif) || d.message || "OrbitDMD"} – ${days} ${d.time}`;
+    }
     const n = d.entities.length ? d.entities.map((e) => this._name(e)).join(" / ") : gifLabel(d.gif);
     return d.entities.length && d.to !== null ? `${n} – ${this._state(d.entities[0], d.to)}` : n;
   }
@@ -360,10 +566,14 @@ class OrbitDMDPanel extends HTMLElement {
         d.priority ? `<span class="badge prio">${t.b_prio}${d.repeat ? " · " + fmt(t.b_repeat, d.repeat) : ""}</span>` : "",
         d.quiet && !d.priority ? `<span class="badge">${esc(fmt(t.b_quiet, d.quietFrom, d.quietTo))}</span>` : "",
         d.cooldown && !d.priority ? `<span class="badge">${esc(fmt(t.b_cool, d.cooldown))}</span>` : "",
+        d.mode === "icon" ? `<span class="badge">${t.b_icon}</span>` : "",
       ].join("") : "";
       const id = esc(s.attributes.id);
       return `<div class="card alert ${on ? "" : "off"}">
-        ${this._screen(d && d.device, d && d.gif)}
+        ${d && d.message && (d.mode === "icon" || !d.gif)
+          // icone + texte (ou texte seul) : le meme apercu anime qu'a l'etape 3
+          ? `<div class="screen" style="border-radius:6px">${this._marquee(d)}</div>`
+          : this._screen(d && d.device, d && d.gif)}
         <div class="info"><b>${esc(String(s.attributes.friendly_name || "").replace(/^OrbitDMD\s*[–-]\s*/, ""))}</b>
           ${d ? `<span>${esc(this._whenText(d))}</span>` : ""}
           ${d && d.message ? `<span>« ${esc(this._sample(d.message, d))} »</span>` : ""}
@@ -435,14 +645,35 @@ class OrbitDMDPanel extends HTMLElement {
   _step2() {
     const t = this._t, d = this._draft;
     d.entities = d.entities.filter((e) => this._hass.states[e]);
-    const head = `<h2>2. ${t.s2}</h2><p class="help">${t.s2_help}</p>`;
+    const kinds = [["entity", t.trig_entity], ["value", t.trig_value], ["time", t.trig_time], ["periodic", t.trig_periodic], ["sun", t.trig_sun], ["calendar", t.trig_calendar]]
+      .map(([k, label]) => `<button class="chip ${d.trig === k ? "on" : ""}" data-a="trig" data-v="${k}">${label}</button>`).join("");
+    const help = { entity: t.s2_help, value: t.value_help, time: t.time_help, periodic: t.per_help, sun: t.sun_help, calendar: t.cal_help }[d.trig];
+    const head = `<h2>2. ${t.s2}</h2><div class="chips">${kinds}</div><p class="help">${help}</p>`;
+    if (d.trig === "time") return head + this._timePicker();
+    if (d.trig === "sun") return head + this._sunPicker();
+    if (d.trig === "calendar") return head + this._calendarPicker();
+
     const search = `<input type="search" id="esearch" style="width:100%" placeholder="${esc(t.e_search)}" value="${esc(this._eq)}">
       <div class="elist" id="elist"></div>`;
+    if (d.trig === "periodic") return head + this._periodPicker(search);
     if (!d.entities.length) return head + search;
-
     const sels = d.entities.map((e) => `<div class="sel"><div class="grow"><b>${esc(this._name(e))}</b><br>
       <small>${esc(e)} · ${esc(fmt(t.now, this._state(e, this._hass.states[e].state)))}</small></div>
       <button data-a="unentity" data-e="${esc(e)}">${t.remove}</button></div>`).join("");
+    const add = this._adding ? search : `<button class="link" data-a="addentity">${t.add_entity}</button>`;
+    // "pendant au moins X minutes" : l'etat (ou la valeur) doit durer avant que l'alerte parte
+    const forSel = `<div class="opt"><span class="lead">${t.for_label}</span><select id="formin">${FOR_MINUTES.map((m) =>
+      `<option value="${m}" ${d.forMin === m ? "selected" : ""}>${m ? this._dur(m) : t.for_now}</option>`).join("")}</select></div>`;
+
+    if (d.trig === "value") {
+      const cmp = [["below", t.cmp_below], ["above", t.cmp_above]]
+        .map(([k, label]) => `<button class="chip ${d.cmp === k ? "on" : ""}" data-a="cmp" data-v="${k}">${label}</button>`).join("");
+      return `${head}<div class="sels">${sels}</div>${add}
+        <h3>${d.entities.length > 1 ? t.when_n : t.when}</h3><div class="chips">${cmp}</div>
+        <div class="bar"><input type="number" step="any" id="threshold" value="${esc(d.threshold)}" placeholder="0" style="width:140px">
+          <span>${esc(this._unit(d))}</span></div>${forSel}`;
+    }
+
     const first = d.entities[0], so = this._hass.states[first];
     const domain = first.split(".")[0];
     let opts = STATES[domain] || [];
@@ -453,9 +684,82 @@ class OrbitDMDPanel extends HTMLElement {
       .concat([`<button class="chip ${isOther || this._other ? "on" : ""}" data-a="other">${t.other}</button>`]).join("");
     const other = isOther || this._other
       ? `<div class="bar"><input type="text" id="otherv" class="grow" value="${esc(isOther ? d.to : "")}" placeholder="${esc(so.state)}"></div>` : "";
-    const add = this._adding ? search : `<button class="link" data-a="addentity">${t.add_entity}</button>`;
     return `${head}<div class="sels">${sels}</div>${add}
-      <h3>${d.entities.length > 1 ? t.when_n : t.when}</h3><div class="chips">${chips}</div>${other}`;
+      <h3>${d.entities.length > 1 ? t.when_n : t.when}</h3><div class="chips">${chips}</div>${other}${forSel}`;
+  }
+
+  // "a intervalle regulier" : la frequence, et des valeurs a montrer (facultatif)
+  _periodPicker(search) {
+    const t = this._t, d = this._draft;
+    const opts = PERIODS.map((m) => `<option value="${m}" ${d.perEvery === m ? "selected" : ""}>${esc(this._periodText(m))}</option>`).join("");
+    const sels = d.entities.map((e) => `<div class="sel"><div class="grow"><b>${esc(this._name(e))}</b><br>
+      <small>${esc(e)} · ${esc(fmt(t.now, this._state(e, this._hass.states[e].state)))}</small></div>
+      <button data-a="unentity" data-e="${esc(e)}">${t.remove}</button></div>`).join("");
+    const add = !d.entities.length || this._adding ? search : `<button class="link" data-a="addentity">${t.add_entity}</button>`;
+    return `<div class="cols"><label class="field">${t.per_label}<select id="perevery">${opts}</select></label></div>
+      <h3>${t.per_values}</h3><p class="help">${t.per_values_help}</p><div class="sels">${sels}</div>${add}`;
+  }
+
+  // "au lever ou au coucher du soleil", avec un decalage
+  _sunPicker() {
+    const t = this._t, d = this._draft;
+    const ev = [["sunrise", t.sunrise], ["sunset", t.sunset]]
+      .map(([k, label]) => `<button class="chip ${d.sunEvent === k ? "on" : ""}" data-a="sunev" data-v="${k}">${label}</button>`).join("");
+    const off = SUN_OFFSETS.map((m) => `<option value="${m}" ${d.sunOffset === m ? "selected" : ""}>${
+      m === 0 ? t.at_exact : fmt(m < 0 ? t.min_before : t.min_after, this._dur(Math.abs(m)))}</option>`).join("");
+    return `<div class="chips">${ev}</div>
+      <div class="cols"><label class="field">${t.offset}<select id="sunoff">${off}</select></label></div>`;
+  }
+
+  // "evenement d'agenda" : agenda, debut ou fin, un peu avant, mot dans le titre
+  _calendarPicker() {
+    const t = this._t, d = this._draft;
+    const cals = Object.values(this._hass.states).filter((x) => x.entity_id.startsWith("calendar."))
+      .sort((a, b) => fold(a.attributes.friendly_name).localeCompare(fold(b.attributes.friendly_name)));
+    if (!cals.length) return `<div class="card muted">${t.no_calendar}</div>`;
+    if (!cals.some((c) => c.entity_id === d.calendar)) d.calendar = cals[0].entity_id;
+    const sel = cals.map((c) => `<option value="${esc(c.entity_id)}" ${c.entity_id === d.calendar ? "selected" : ""}>${
+      esc(c.attributes.friendly_name || c.entity_id)}</option>`).join("");
+    const ev = [["start", t.cal_start], ["end", t.cal_end]]
+      .map(([k, label]) => `<button class="chip ${d.calEvent === k ? "on" : ""}" data-a="calev" data-v="${k}">${label}</button>`).join("");
+    const off = CAL_OFFSETS.map((m) => `<option value="${m}" ${d.calOffset === m ? "selected" : ""}>${
+      m === 0 ? t.at_exact : fmt(t.min_before, this._dur(m))}</option>`).join("");
+    return `<div class="cols">
+        <label class="field">${t.calendar}<select id="calendar">${sel}</select></label>
+        <label class="field">${t.offset}<select id="caloff">${off}</select></label>
+      </div>
+      <div class="chips" style="margin-top:12px">${ev}</div>
+      <label class="field">${t.cal_word}<input type="text" id="calword" value="${esc(d.calWord)}" placeholder="${esc(t.cal_word_ph)}"></label>`;
+  }
+
+  // "a un jour et une heure" : heure, jours de la semaine, toutes les semaines ou une sur deux
+  _timePicker() {
+    const t = this._t, d = this._draft;
+    const days = WEEKDAYS.map((k) => `<button class="chip ${d.days.includes(k) ? "on" : ""}" data-a="day" data-v="${k}">${esc(this._dayName(k))}</button>`).join("");
+    const all = d.days.length === 7;
+    const week = isoWeek(new Date()) % 2;
+    const parity = d.every === 2 ? `<label class="field">&nbsp;<select id="parity">
+        <option value="${week}" ${d.parity === week ? "selected" : ""}>${t.parity_this}</option>
+        <option value="${1 - week}" ${d.parity !== week ? "selected" : ""}>${t.parity_next}</option></select></label>` : "";
+    return `<div class="cols">
+        <label class="field">${t.at_time}<input type="time" id="ttime" value="${esc(d.time)}"></label>
+        <label class="field">${t.every}<select id="every">
+          <option value="1" ${d.every !== 2 ? "selected" : ""}>${t.every1}</option>
+          <option value="2" ${d.every === 2 ? "selected" : ""}>${t.every2}</option></select></label>
+        ${parity}
+      </div>
+      <h3>${t.days}</h3><div class="chips">${days}
+        <button class="chip ${all ? "on" : ""}" data-a="alldays">${t.every_day}</button></div>`;
+  }
+
+  // ce qui manque a l'etape 2 (texte du message d'erreur), ou ""
+  _step2Missing(d) {
+    const t = this._t;
+    if (ENTITY_TRIGS.includes(d.trig) && !d.entities.length) return t.need_entity;
+    if (d.trig === "value" && (d.threshold === "" || isNaN(Number(d.threshold)))) return t.need_threshold;
+    if (d.trig === "time" && !d.days.length) return t.need_day;
+    if (d.trig === "calendar" && !d.calendar) return t.need_calendar;
+    return "";
   }
 
   _renderEntities() {
@@ -465,6 +769,7 @@ class OrbitDMDPanel extends HTMLElement {
     let list = Object.values(this._hass.states).filter((s) => !s.entity_id.startsWith("automation.")
       && !s.entity_id.startsWith("update.") && !d.entities.includes(s.entity_id));
     if (q) list = list.filter((s) => fold(s.attributes.friendly_name).includes(q) || fold(s.entity_id).includes(q));
+    else if (d.trig === "value" || d.trig === "periodic") list = list.filter((s) => s.attributes.unit_of_measurement && !isNaN(parseFloat(s.state)));
     else list = list.filter((s) => SUGGESTED.includes(s.entity_id.split(".")[0]));
     list = list.sort((a, b) => fold(a.attributes.friendly_name || a.entity_id).localeCompare(fold(b.attributes.friendly_name || b.entity_id))).slice(0, 60);
     box.innerHTML = (q ? "" : `<small class="muted">${t.e_suggest}</small>`)
@@ -474,10 +779,21 @@ class OrbitDMDPanel extends HTMLElement {
 
   _step3() {
     const t = this._t, d = this._draft;
+    this._fixMode(d);
     const sw = Object.entries(COLORS).map(([k, c]) => `<button class="sw ${d.color === k ? "on" : ""}" data-a="color" data-c="${k}" title="${esc(t.colors[k])}" style="background:${c}"></button>`).join("");
     const eff = EFFECTS.map((e) => `<option value="${e}" ${d.effect === e ? "selected" : ""}>${esc(t.effects[e])}</option>`).join("");
+    const fonts = this._panelOf(d.device).fonts || [];
+    const fontOpts = [["", t.dflt], [PIXEL, t.font_pixel]].concat(fonts.map((f) => [f, fontLabel(f)]))
+      .concat(d.font && d.font !== PIXEL && !fonts.includes(d.font) ? [[d.font, fontLabel(d.font)]] : [])
+      .map(([v, l]) => `<option value="${esc(v)}" ${d.font === v ? "selected" : ""}>${esc(l)}</option>`).join("");
+    const sizeOpts = `<option value="">${t.size_auto}</option>` + SIZES.concat(d.size && !SIZES.includes(d.size) ? [d.size] : [])
+      .map((v) => `<option value="${v}" ${d.size === v ? "selected" : ""}>${fmt(t.size_px, v)}</option>`).join("");
     const num = (sel, max) => `<option value="">${t.dflt}</option>` + Array.from({ length: max }, (_, i) => `<option ${sel === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("");
-    const inserts = d.entities.length === 1
+    const withEntities = ENTITY_TRIGS.includes(d.trig);
+    const inserts = d.trig === "calendar" ? `<button data-a="insert" data-k="event">${t.insert_event}</button>`
+      : d.trig === "periodic" ? d.entities.map((e) => `<button data-a="insert" data-k="fixed" data-e="${esc(e)}">${esc(fmt(t.insert, this._name(e)))}</button>`).join("")
+      : !withEntities ? ""
+      : d.entities.length === 1
       ? `<button data-a="insert" data-k="value1">${esc(fmt(t.insert, this._name(d.entities[0])))}</button>`
       : d.entities.length > 1
         ? `<button data-a="insert" data-k="name">${t.insert_name}</button><button data-a="insert" data-k="value">${t.insert_value}</button>` : "";
@@ -490,9 +806,14 @@ class OrbitDMDPanel extends HTMLElement {
         <label class="field">${t.effect}<select id="effect">${eff}</select></label>
         <label class="field">${t.speed}<select id="speed">${num(d.speed, 10)}</select></label>
         <label class="field" title="${esc(t.passes_help)}">${t.passes} (${t.passes_help})<select id="passes">${num(d.passes, 5)}</select></label>
+        <label class="field">${t.font}<select id="font">${fontOpts}</select></label>
+        <label class="field">${t.size}<select id="size">${sizeOpts}</select></label>
+        <label class="field" title="${esc(t.lines_help)}">${t.lines}<select id="lines">
+          <option value="1" ${d.lines !== 2 ? "selected" : ""}>${t.lines_1}</option>
+          <option value="2" ${d.lines === 2 ? "selected" : ""}>${t.lines_2}</option></select></label>
       </div>
-      <div class="preview">${this._screen(d.device, d.gif, "screen")}
-        <div class="screen" id="pv">${this._marquee()}</div></div>
+      ${this._displayPicker()}
+      <div class="preview" id="pvbox">${this._previewHtml()}</div>
       <div class="bar"><button class="primary" data-a="test">▶ ${t.test_btn}</button></div>`;
   }
 
@@ -504,16 +825,307 @@ class OrbitDMDPanel extends HTMLElement {
       if (fixed) return this._value(fixed[1]);
       if (/to_state\.name/.test(inner)) return this._name(first);
       if (/trigger\.entity_id/.test(inner)) return this._value(first);
+      if (/calendar_event/.test(inner)) return d.calWord.trim() || this._t.sample_event;
       return "…";
     });
   }
 
-  _marquee() {
+  // icone liee a une GIF : meme nom dans la categorie Icones (Domotique/porte_ouverte.gif ->
+  // Icones/porte_ouverte.gif) ; une GIF choisie dans Icones est sa propre icone
+  _iconFor(gif) {
+    if (!gif) return "";
+    const parts = gif.split("/");
+    if (parts[0] === ICON_CATEGORY) return gif;
+    const icon = `${ICON_CATEGORY}/${parts.slice(1).join("/")}`;
+    return this._panelOf(this._draft.device).gifs.includes(icon) ? icon : "";
+  }
+
+  _icons() {
+    return this._panelOf(this._draft.device).gifs.filter((g) => g.split("/")[0] === ICON_CATEGORY);
+  }
+
+  // mode d'affichage coherent avec la GIF choisie
+  _fixMode(d) {
+    if (d.gif && d.gif.split("/")[0] === ICON_CATEGORY) { d.mode = "icon"; d.icon = d.gif; }
+    if (d.mode === "icon" && !d.icon) d.icon = this._iconFor(d.gif) || this._icons()[0] || "";
+    if (d.mode === "icon" && !d.icon) d.mode = "gif";
+  }
+
+  // affichage : la GIF complete puis le texte, ou l'icone a gauche avec le texte a cote
+  _displayPicker() {
+    const t = this._t, d = this._draft;
+    const icons = this._icons();
+    if (!icons.length) return "";
+    const onlyIcon = d.gif && d.gif.split("/")[0] === ICON_CATEGORY;
+    const chips = (onlyIcon ? "" : `<button class="chip ${d.mode !== "icon" ? "on" : ""}" data-a="mode" data-m="gif">${d.gif ? t.mode_gif : t.mode_text}</button>`)
+      + `<button class="chip ${d.mode === "icon" ? "on" : ""}" data-a="mode" data-m="icon">${t.mode_icon}</button>`;
+    // icone choisie d'office (celle de la GIF) ; la liste ne s'ouvre qu'avec "Changer l'icone"
+    let tiles = "";
+    if (d.mode === "icon" && this._pickIcon) {
+      tiles = `<p class="help">${t.icon_help}</p><div class="icons">${icons.map((g) => `<button class="ico ${d.icon === g ? "on" : ""}" data-a="icon"
+          data-g="${esc(g)}" title="${esc(gifLabel(g))}">${this._screen(d.device, g, "icobox")}</button>`).join("")}</div>`;
+    } else if (d.mode === "icon") {
+      tiles = `<div class="row"><div class="ico on">${this._screen(d.device, d.icon, "icobox")}</div>
+        <span>${esc(gifLabel(d.icon))}</span><button class="link" data-a="pickicon">${t.change_icon}</button></div>`;
+    }
+    return `<h3>${t.mode}</h3><div class="chips">${chips}</div>${tiles}`;
+  }
+
+  _previewHtml() {
     const d = this._draft;
+    return `${d.mode === "icon" ? "" : this._screen(d.device, d.gif, "screen")}<div class="screen" id="pv">${this._marquee()}</div>`;
+  }
+
+  // apercu du texte avec l'effet, la police, la taille et la vitesse choisis ; taille, pages et
+  // durees calculees comme sur le panneau (clockrender.cpp FitPages/SplitPages, dmdapp.cpp)
+  _marquee(d = this._draft) {
     if (!d.message) return "";
     const c = COLORS[d.color] || "#fff";
-    const style = c.startsWith("linear") ? `background:${c};-webkit-background-clip:text;background-clip:text;color:transparent` : `color:${c}`;
-    return `<div class="marquee ${d.priority ? "blink" : ""}" style="${style}">${esc(this._sample(d.message))}</div>`;
+    const rainbow = c.startsWith("linear");
+    const paint = rainbow ? `background:${c};-webkit-background-clip:text;background-clip:text;color:transparent` : `color:${c}`;
+    const icon = d.mode === "icon" && d.icon ? this._pvIcon(d) : "";
+    const text = this._sample(d.message, d);
+    const s = d.speed || DEFAULT_SPEED;
+    const paged = PAGED.includes(d.effect);
+    const L = this._layout(d, text, paged, !!icon);
+    const area = icon ? this._iconArea(d) : 0;      // pixels reserves a gauche (icone + 3)
+    const font = this._fontCss(L);
+    // interligne : hauteur d'une ligne + 2 pixels (comme le panneau)
+    const lh = `line-height:${(((L.lineHeight + LINE_GAP) * 100) / 32).toFixed(1)}cqh`;
+    const show = (str) => esc(str).replace(/\n/g, "<br>");
+    const wrap = (html, css = "") => `${icon}<div class="${d.priority ? "blinker" : "pvtext"}">${html}</div>${css ? `<style>${css}</style>` : ""}`;
+    if (!paged) {
+      // defilement : la duree depend de la longueur du texte (calculee par _tune une fois affiche)
+      return wrap(`<div class="marquee scroll" style="${font};${paint};animation:${d.effect === "inverse" ? "mqr" : "mq"} var(--dur, 7s) linear infinite">${esc(text)}</div>`);
+    }
+    // chaque page : entree, pause, sortie ; les pages se suivent dans une seule boucle
+    const times = L.pages.map((pg) => {
+      const n = Math.max(1, [...pg.replace(/\n/g, "")].length);
+      let tin = 1300 - s * 90;
+      if (d.effect === "lettres") tin = n * (200 - s * 15);
+      if (d.effect === "pluie") tin = 600 + n * (130 - s * 9);
+      const hold = Math.min(5000, 1200 + n * 60);
+      return { n, tin, hold, tout: d.effect === "lettres" ? tin / 3 : tin };
+    });
+    const total = times.reduce((a, x) => a + x.tin + x.hold + x.tout, 0);
+    const pc = (ms) => `${Math.min(100, Math.max(0, (ms / total) * 100)).toFixed(3)}%`;
+    const anim = (name, timing = "linear") => `animation:${name} ${(total / 1000).toFixed(2)}s ${timing} infinite`;
+    const PALETTE = ["#ff2a2a", "#ff8a00", "#ffee00", "#2bff3a", "#22e3d2", "#3a6bff", "#a24bff", "#ff52b4"];
+    const k = `pv${(this._seq = (this._seq || 0) + 1)}`;
+    let css = "", t0 = 0, nth = 0;
+    const spans = L.pages.map((pg, pi) => {
+      const { n, tin, hold, tout } = times[pi];
+      const A = t0, B = A + tin, C = B + hold, D = C + tout;
+      t0 = D;
+      const name = `${k}_${pi}`;
+      if (d.effect === "lettres" || d.effect === "pluie") {
+        const letters = [...pg.replace(/\n/g, "")].map((ch, i) => {
+          const nm = `${name}_${i}`;
+          const col = rainbow ? PALETTE[nth++ % PALETTE.length] : c;
+          if (d.effect === "lettres") {
+            // apparait lettre par lettre, s'efface depuis la fin
+            css += `@keyframes ${nm}{0%{opacity:0}${pc(A + (tin * (i + 1)) / n)}{opacity:1}${pc(C + (tout * (n - i)) / n)}{opacity:0}100%{opacity:0}}`;
+            return `<span class="l" style="color:${col};${anim(nm, "step-end")}">${esc(ch)}</span>`;
+          }
+          // pluie : chaque lettre tombe a son tour (depart etale sur 60 %, chute en 40 %)
+          const a = A + (tin * 0.6 * i) / n, b = C + (tout * 0.6 * i) / n;
+          css += `@keyframes ${nm}{0%,${pc(a)}{transform:translateY(-100cqh);animation-timing-function:ease-in}`
+            + `${pc(a + tin * 0.4)},${pc(b)}{transform:none;animation-timing-function:ease-in}`
+            + `${pc(b + tout * 0.4)},100%{transform:translateY(100cqh)}}`;
+          return `<span class="l" style="color:${col};${anim(nm)}">${esc(ch)}</span>`;
+        }).join("");
+        // saut de ligne remis apres les lettres de la premiere ligne
+        const cut = pg.indexOf("\n") < 0 ? -1 : [...pg.slice(0, pg.indexOf("\n"))].length;
+        const parts = letters.split("</span>");
+        const joined = cut < 0 ? letters : parts.slice(0, cut).join("</span>") + "</span><br>" + parts.slice(cut).join("</span>");
+        return `<span class="t" style="${lh}">${joined}</span>`;
+      }
+      // monte : entre par le bas, sort par le haut ; descend : l'inverse ; fondu : apparait puis s'efface
+      if (d.effect === "fondu") {
+        css += `@keyframes ${name}{0%,${pc(A)}{opacity:0}${pc(B)},${pc(C)}{opacity:1}${pc(D)},100%{opacity:0}}`;
+      } else {
+        const from = d.effect === "monte" ? "translateY(100cqh)" : "translateY(-100cqh)";
+        const to = d.effect === "monte" ? "translateY(-100cqh)" : "translateY(100cqh)";
+        css += `@keyframes ${name}{0%,${pc(A)}{transform:${from}}${pc(B)},${pc(C)}{transform:none}${pc(D)},100%{transform:${to}}}`;
+      }
+      return `<span class="t" style="${paint};${lh};${anim(name)}">${show(pg)}</span>`;
+    }).join("");
+    const left = area ? `left:${((area * 100) / 128).toFixed(2)}cqw;` : "";
+    return wrap(`<div class="marquee page" style="${left}${font}">${spans}</div>`, css);
+  }
+
+  // taille du texte et pages, comme le panneau : taille automatique = la plus grande qui tient en
+  // hauteur ; effets en pages : reduite jusqu'a tenir en 3 pages au plus, coupees entre les mots
+  _layout(d, text, paged, withIcon) {
+    const family = d.font && d.font !== PIXEL ? this._fontFamily(d) : null;
+    const W = 128 - (withIcon ? this._iconArea(d) : 0);
+    let ctx = null;
+    if (family) {
+      try { ctx = (this._canvas = this._canvas || document.createElement("canvas").getContext("2d")); } catch (e) { ctx = null; }
+    }
+    const scale = (size) => Math.max(1, Math.floor((size + 3) / 7));     // police Pixel : 5x7 agrandie
+    const width = (str, size) => {
+      if (!ctx) return [...str].length * 6 * scale(size) - scale(size);
+      ctx.font = `${size}px '${family}'`;
+      return ctx.measureText(str).width;
+    };
+    const height = (size) => {
+      if (!ctx) return 7 * scale(size);
+      ctx.font = `${size}px '${family}'`;
+      const m = ctx.measureText("HÉgy");
+      return m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    };
+    const two = paged && d.lines === 2;
+    const lineMax = two ? (32 - LINE_GAP) / 2 : 32;          // deux lignes l'une sous l'autre
+    let max = 6;
+    for (let s = 48; s >= 6; s--) if (height(s) <= lineMax) { max = s; break; }
+    // lignes coupees entre les mots ; deux lignes par page : "ligne 1\nligne 2"
+    const split = (size) => {
+      const lines = splitLines(size);
+      if (!two) return lines;
+      const pages = [];
+      for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2).join("\n"));
+      return pages;
+    };
+    const pageWidth = (pg, size) => Math.max(...pg.split("\n").map((l) => width(l, size)));
+    const result = (size, pages) => ({ family, size, pages, lineHeight: height(size) });
+    const splitLines = (size) => {
+      const pages = [];
+      let line = "";
+      for (const word of text.split(" ").filter(Boolean)) {
+        const tryLine = line ? `${line} ${word}` : word;
+        if (line && width(tryLine, size) > W - 4) { pages.push(line); line = word; } else line = tryLine;
+      }
+      if (line) pages.push(line);
+      return pages.length ? pages : [text];
+    };
+    if (!paged) return result(d.size || max, [text]);
+    if (d.size) return result(d.size, split(d.size));
+    let fallback = 0;
+    for (let s = max; s >= 6; s--) {
+      const pages = split(s);
+      const fits = pages.every((pg) => pageWidth(pg, s) <= W - 2);
+      if (fits && pages.length <= 3) return result(s, pages);
+      if (fits && !fallback) fallback = s;
+    }
+    const size = fallback || 6;
+    return result(size, split(size));
+  }
+
+  // icone a gauche du texte : seulement ses colonnes dessinees, collees au bord (comme le panneau)
+  _pvIcon(d) {
+    const m = this._iconInfo(d);
+    const p = this._panelOf(d.device);
+    if (!m || !m.width) return `<div class="pvicon">${this._screen(d.device, d.icon, "icobox")}</div>`;
+    const cq = (px) => ((px * 100) / 128).toFixed(2);
+    return `<div class="pvicon" style="aspect-ratio:auto;width:${cq(m.width)}cqw;overflow:hidden">
+      <img class="gif" data-entry="${esc(p.entry_id)}" data-gif="${esc(d.icon)}" alt="" style="width:${cq(m.gw)}cqw;height:${((m.gh * 100) / 32).toFixed(2)}cqh;
+      max-width:none;object-fit:fill;margin-left:-${cq(m.x0)}cqw;margin-top:${(((32 - m.gh) / 2) * 100 / 32).toFixed(2)}cqh"></div>`;
+  }
+
+  // pixels reserves a gauche pour l'icone : sa largeur dessinee + 3 (ICON_GAP du panneau)
+  _iconArea(d) {
+    const m = this._iconInfo(d);
+    if (!m) return ICON_WIDTH + 3;              // pas encore mesuree
+    return m.width ? m.width + 3 : 0;           // trop large ou vide : le panneau l'ignore
+  }
+
+  // mesure de l'icone (toutes ses images) : colonnes dont un pixel depasse 24 ; null tant qu'inconnue
+  _iconInfo(d) {
+    this._iconW = this._iconW || new Map();
+    const p = this._panelOf(d.device);
+    const key = `${p.entry_id}|${d.icon}`;
+    const v = this._iconW.get(key);
+    if (v && v !== "loading") return v;
+    if (v === undefined) {
+      this._iconW.set(key, "loading");
+      this._measureIcon(p.entry_id, d.icon)
+        .then((m) => { this._iconW.set(key, m); this._refreshPreview(); })
+        .catch(() => this._iconW.set(key, null));
+    }
+    return null;
+  }
+
+  async _measureIcon(entry, gif) {
+    const cat = gif.split("/")[0], name = gif.split("/").slice(1).join("/");
+    const r = await this._hass.fetchWithAuth(`/api/orbitdmd/gif/${encodeURIComponent(entry)}/${encodeURIComponent(cat)}/${encodeURIComponent(name)}`);
+    if (!r.ok) throw new Error(r.status);
+    const anim = GifFrames.decode(new Uint8Array(await r.arrayBuffer()));
+    const gw = anim.w, gh = anim.h;
+    let x0 = gw, x1 = -1;
+    for (const fr of anim.frames) {
+      const px = fr.rgba;
+      for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+        const k = (y * gw + x) * 4;
+        if (px[k + 3] && (px[k] > 24 || px[k + 1] > 24 || px[k + 2] > 24)) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+      }
+    }
+    const width = x1 < x0 || x1 - x0 + 1 > 64 ? 0 : x1 - x0 + 1;
+    return { width, x0: Math.max(0, x0), gw, gh };
+  }
+
+  // police et taille de l'apercu (100cqh = les 32 pixels du panneau) ; police Pixel imitee
+  _fontCss(L) {
+    if (L.family) return `font-family:'${L.family}';font-size:${((L.size * 100) / 32).toFixed(1)}cqh`;
+    const scale = Math.max(1, Math.floor((L.size + 3) / 7));
+    // police Pixel du panneau (orbitdmd-pixel.ttf : un pixel = 1/10 de la taille, 6 pixels d'avance)
+    if (this._pixelFont() ) return `font-family:'${PIXEL_FAMILY}';font-size:${((10 * scale * 100) / 32).toFixed(2)}cqh`;
+    // en attendant qu'elle soit chargee : police a chasse fixe, a peu pres de la meme taille
+    return `font-family:'Courier New',monospace;font-weight:bold;letter-spacing:-.07em;font-size:${((7 * scale * 100) / 0.62 / 32).toFixed(1)}cqh`;
+  }
+
+  // charge une fois orbitdmd-pixel.ttf (a cote de cette page) ; vrai quand elle est prete
+  _pixelFont() {
+    if (this._pixel === "ok") return true;
+    if (this._pixel || typeof FontFace === "undefined") return false;
+    this._pixel = "loading";
+    new FontFace(PIXEL_FAMILY, `url(${new URL("./orbitdmd-pixel.ttf", import.meta.url).pathname})`).load()
+      .then((face) => { document.fonts.add(face); this._pixel = "ok"; this._refreshPreview(); })
+      .catch(() => { this._pixel = "fail"; });
+    return false;
+  }
+
+  // police du panneau chargee dans le navigateur (relais /api/orbitdmd/font/...) ; null tant
+  // qu'elle n'est pas prete (ou si le panneau ne la donne pas : programme plus ancien que 1.7.0)
+  _fontFamily(d) {
+    const p = this._panelOf(d.device);
+    const key = `${p.entry_id}|${d.font}`;
+    const family = `odmd-${key.replace(/[^A-Za-z0-9]/g, "_")}`;
+    this._fonts = this._fonts || new Map();
+    const state = this._fonts.get(key);
+    if (state === "ok") return family;
+    if (state === undefined && (p.fonts || []).includes(d.font)) {
+      this._fonts.set(key, "loading");
+      this._hass.fetchWithAuth(`/api/orbitdmd/font/${encodeURIComponent(p.entry_id)}/${encodeURIComponent(d.font)}`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+        .then((buf) => new FontFace(family, buf).load())
+        .then((face) => { document.fonts.add(face); this._fonts.set(key, "ok"); this._refreshPreview(); })
+        .catch(() => this._fonts.set(key, "fail"));
+    }
+    return null;
+  }
+
+  // duree du defilement : (largeur du texte + largeur du panneau) / vitesse du panneau
+  _tune() {
+    const s = (this._draft && this._draft.speed) || DEFAULT_SPEED;
+    this.shadowRoot.querySelectorAll(".marquee.scroll").forEach((el) => {
+      const box = el.closest(".screen");
+      if (!box || !box.clientWidth) return;
+      const px = (el.scrollWidth * 128) / box.clientWidth;
+      el.style.setProperty("--dur", `${((px + 128) / (10 + s * 15)).toFixed(2)}s`);
+    });
+  }
+
+  _refreshPreview() {
+    const box = this.shadowRoot.getElementById("pvbox");
+    if (box) box.innerHTML = this._previewHtml();
+    else if (this._view === 4 || this._view === "home") {
+      // police ou mesure d'icone arrivee pendant l'etape 4 ou sur la liste : un seul rendu groupe
+      if (!this._redraw) this._redraw = requestAnimationFrame(() => { this._redraw = 0; this._render(); });
+      return;
+    }
+    this._observe();      // vignette de l'icone
+    this._tune();
   }
 
   // valeur arrondie avec son unite ; virgule decimale dans les langues qui l'utilisent
@@ -545,16 +1157,18 @@ class OrbitDMDPanel extends HTMLElement {
       </div>
       <div class="opt">
         <label class="lead"><input type="checkbox" id="prio" ${prio ? "checked" : ""}><b>${t.prio}</b></label>
-        ${prio ? `<span>${t.repeat}</span><select id="repeat">${mins(REPEATS, d.repeat, t.no_repeat)}</select>` : ""}
+        ${prio && ENTITY_TRIGS.includes(d.trig) ? `<span>${t.repeat}</span><select id="repeat">${mins(REPEATS, d.repeat, t.no_repeat)}</select>` : ""}
         <small>${t.prio_help}</small>
       </div>
-      <div class="preview">${this._screen(d.device, d.gif, "screen")}</div>
+      <div class="preview">${d.mode === "icon" ? `<div class="screen">${this._marquee()}</div>` : this._screen(d.device, d.gif, "screen")}</div>
       <dl class="sum">
         ${panels.length > 1 ? `<dt>${t.sum_panel}</dt><dd>${esc(this._panelOf(d.device).title)}</dd>` : ""}
         <dt>${t.sum_gif}</dt><dd>${esc(d.gif || "—")}</dd>
         <dt>${t.sum_when}</dt><dd>${esc(this._whenText(d))}</dd>
         <dt>${t.sum_text}</dt><dd>${esc(d.message ? this._sample(d.message) : "—")}</dd>
+        ${d.mode === "icon" ? `<dt>${t.icon}</dt><dd>${esc(d.icon)}</dd>` : ""}
         <dt>${t.color}</dt><dd>${esc(t.colors[d.color] || d.color)} · ${esc(t.effects[d.effect] || d.effect)}</dd>
+        <dt>${t.font}</dt><dd>${esc(!d.font ? t.dflt : d.font === PIXEL ? t.font_pixel : fontLabel(d.font))} · ${esc(d.size ? fmt(t.size_px, d.size) : t.size_auto)}${d.lines === 2 && PAGED.includes(d.effect) ? ` · ${esc(t.lines_2)}` : ""}</dd>
       </dl>`;
   }
 
@@ -562,8 +1176,11 @@ class OrbitDMDPanel extends HTMLElement {
 
   _newDraft() {
     return { id: null, device: this._data.panels[0].device_id, gif: "", entities: [], to: null, message: "",
-      color: "blanc", effect: "defile", speed: null, passes: null, name: "",
-      quiet: false, quietFrom: "23:00", quietTo: "07:00", cooldown: 0, priority: false, repeat: 0 };
+      color: "blanc", effect: "defile", speed: null, passes: null, name: "", font: "", size: 0, lines: 1,
+      quiet: false, quietFrom: "23:00", quietTo: "07:00", cooldown: 0, priority: false, repeat: 0, icon: "", mode: "gif",
+      trig: "entity", perEvery: 60, time: "19:00", days: [], every: 1, parity: isoWeek(new Date()) % 2,
+      forMin: 0, cmp: "below", threshold: "", sunEvent: "sunset", sunOffset: 0,
+      calendar: "", calEvent: "start", calOffset: 0, calWord: "" };
   }
 
   _findNotify(list) {
@@ -583,13 +1200,28 @@ class OrbitDMDPanel extends HTMLElement {
     const one = (v) => (Array.isArray(v) ? v[0] : v);
     const o = {
       id: cfg.id, name: String(cfg.alias || "").replace(/^OrbitDMD\s*[–-]\s*/, ""),
-      entities: [].concat(tr.entity_id || []), to: tr.to === undefined || tr.to === null ? null : String(tr.to),
-      device: one(d.device_id) || this._data.panels[0].device_id, gif: d.gif || "", message: d.message || "",
+      entities: Array.isArray(meta.entities) ? meta.entities.slice() : [].concat(tr.entity_id || []), to: tr.to === undefined || tr.to === null ? null : String(tr.to),
+      device: one(d.device_id) || this._data.panels[0].device_id, gif: d.gif || meta.gif || "", message: d.message || "",
       color: d.color || "blanc", effect: d.effect || "defile",
       speed: d.speed ? Number(d.speed) : null, passes: d.passes ? Number(d.passes) : null,
+      font: d.font ? String(d.font) : "", size: Number(d.size) || 0, lines: Number(d.lines) === 2 ? 2 : 1,
       quiet: !!meta.quiet, quietFrom: hhmm(meta.quiet_from, "23:00"), quietTo: hhmm(meta.quiet_to, "07:00"),
       cooldown: Number(meta.cooldown) || 0, priority: meta.priority !== undefined ? !!meta.priority : !!d.blink,
-      repeat: Number(meta.repeat) || 0,
+      repeat: Number(meta.repeat) || 0, icon: d.icon || "",
+      mode: meta.display || (d.icon && !d.gif ? "icon" : "gif"),
+      trig: meta.trig || ({ time: "time", time_pattern: "periodic", numeric_state: "value", sun: "sun", calendar: "calendar" }[tr.trigger || tr.platform] || "entity"),
+      forMin: Number(meta.for_min) || (tr.for && Number(tr.for.minutes)) || 0,
+      cmp: meta.cmp || (tr.above !== undefined ? "above" : "below"),
+      threshold: meta.threshold !== undefined ? String(meta.threshold) : String(tr.above ?? tr.below ?? ""),
+      sunEvent: meta.sun_event || tr.event === "sunrise" ? (meta.sun_event || "sunrise") : "sunset",
+      sunOffset: meta.sun_offset !== undefined ? Number(meta.sun_offset) : fromHms(tr.offset),
+      calendar: meta.calendar || (tr.trigger === "calendar" ? one(tr.entity_id) || "" : ""),
+      calEvent: meta.cal_event || (tr.trigger === "calendar" && tr.event === "end" ? "end" : "start"),
+      calOffset: meta.cal_offset !== undefined ? Number(meta.cal_offset) : Math.abs(fromHms(tr.trigger === "calendar" ? tr.offset : 0)),
+      calWord: meta.cal_word || "",
+      perEvery: PERIODS.includes(Number(meta.per_every)) ? Number(meta.per_every) : 60,
+      time: hhmm(meta.time || tr.at, "19:00"), days: Array.isArray(meta.days) ? meta.days : [],
+      every: Number(meta.every) === 2 ? 2 : 1, parity: Number(meta.parity) === 1 ? 1 : 0,
     };
     o.autoName = this._autoName(o);     // un nom propose garde le suivi si l'etat change
     return o;
@@ -597,39 +1229,76 @@ class OrbitDMDPanel extends HTMLElement {
 
   _notifyData(d) {
     const data = { device_id: [d.device] };
-    if (d.gif) data.gif = d.gif;
+    // icone + texte : seulement l'icone (pas de GIF avant) ; sinon la GIF complete puis le texte
+    if (d.mode === "icon" && d.icon) data.icon = d.icon;
+    else if (d.gif) data.gif = d.gif;
     if (d.message) data.message = d.message;
     data.color = d.color;
     data.effect = d.effect;
     if (d.speed) data.speed = d.speed;
     if (d.passes) data.passes = d.passes;
+    if (d.font) data.font = d.font;
+    if (d.size) data.size = d.size;
+    if (d.lines === 2 && PAGED.includes(d.effect)) data.lines = 2;
     if (d.priority) data.blink = true;
     return data;
   }
 
   _config(d) {
-    const trigger = { trigger: "state", entity_id: d.entities.length === 1 ? d.entities[0] : d.entities.slice(), not_from: ["unavailable"] };
-    if (d.to === null) trigger.not_to = ["unavailable", "unknown"];   // tout changement d'etat (pas les attributs)
-    else trigger.to = d.to;
+    let trigger;
+    const when = [];       // conditions du declencheur "jour et heure"
+    if (d.trig === "time") {
+      trigger = { trigger: "time", at: `${d.time}:00` };
+      if (d.days.length && d.days.length < 7) when.push({ condition: "time", weekday: WEEKDAYS.filter((k) => d.days.includes(k)) });
+      // une semaine sur deux : semaine ISO paire ou impaire
+      if (d.every === 2) when.push({ condition: "template", value_template: `{{ now().isocalendar()[1] % 2 == ${d.parity} }}` });
+    } else if (d.trig === "periodic") {
+      // minutes "/15" : a :00, :15, :30, :45 ; heures "/2" : a 0 h, 2 h, 4 h... (a l'heure pile)
+      trigger = d.perEvery < 60 ? { trigger: "time_pattern", minutes: `/${d.perEvery}` }
+        : { trigger: "time_pattern", hours: `/${d.perEvery / 60}`, minutes: 0 };
+    } else if (d.trig === "sun") {
+      trigger = { trigger: "sun", event: d.sunEvent };
+      if (d.sunOffset) trigger.offset = hms(d.sunOffset);
+    } else if (d.trig === "calendar") {
+      trigger = { trigger: "calendar", event: d.calEvent, entity_id: d.calendar };
+      if (d.calOffset) trigger.offset = hms(-d.calOffset);
+      // seulement les evenements dont le titre contient le mot (sans tenir compte des majuscules)
+      const word = d.calWord.trim().toLowerCase().replace(/['"\\{}%]/g, "");
+      if (word) when.push({ condition: "template", value_template: `{{ '${word}' in (trigger.calendar_event.summary or '') | lower }}` });
+    } else if (d.trig === "value") {
+      trigger = { trigger: "numeric_state", entity_id: d.entities.length === 1 ? d.entities[0] : d.entities.slice(),
+        [d.cmp === "above" ? "above" : "below"]: Number(d.threshold) };
+      if (d.forMin) trigger.for = { minutes: d.forMin };
+    } else {
+      trigger = { trigger: "state", entity_id: d.entities.length === 1 ? d.entities[0] : d.entities.slice(), not_from: ["unavailable"] };
+      if (d.to === null) trigger.not_to = ["unavailable", "unknown"];   // tout changement d'etat (pas les attributs)
+      else trigger.to = d.to;
+      if (d.forMin) trigger.for = { minutes: d.forMin };
+    }
     const notify = { action: "orbitdmd.notify", data: this._notifyData(d) };
-    const repeat = d.priority && d.repeat > 0;
+    const repeat = d.priority && d.repeat > 0 && ENTITY_TRIGS.includes(d.trig);
     const cooldown = !d.priority && d.cooldown > 0;
     let actions;
     if (repeat) {
       // alerte prioritaire : se repete tant que l'entite garde l'etat qui l'a declenchee
       actions = [{ repeat: {
-        while: [{ condition: "template",
-          value_template: `{{ repeat.index <= ${MAX_REPEATS} and is_state(trigger.entity_id, trigger.to_state.state) }}` }],
+        while: [{ condition: "template", value_template: d.trig === "value"
+          ? `{{ repeat.index <= ${MAX_REPEATS} and (states(trigger.entity_id) | float(0)) ${d.cmp === "above" ? ">" : "<"} ${Number(d.threshold)} }}`
+          : `{{ repeat.index <= ${MAX_REPEATS} and is_state(trigger.entity_id, trigger.to_state.state) }}` }],
         sequence: [notify, { delay: { minutes: d.repeat } }] } }];
     } else {
       // anti-repetition : l'automatisation reste "occupee" pendant le delai, les declenchements sont ignores
       actions = cooldown ? [notify, { delay: { minutes: d.cooldown } }] : [notify];
     }
-    const conditions = d.quiet && !d.priority
-      ? [{ condition: "not", conditions: [{ condition: "time", after: `${d.quietFrom}:00`, before: `${d.quietTo}:00` }] }] : [];
+    const conditions = when.concat(d.quiet && !d.priority
+      ? [{ condition: "not", conditions: [{ condition: "time", after: `${d.quietFrom}:00`, before: `${d.quietTo}:00` }] }] : []);
     const cfg = {
       id: d.id, alias: `OrbitDMD – ${d.name}`, description: this._t.description,
-      variables: { orbitdmd: { quiet: d.quiet, quiet_from: d.quietFrom, quiet_to: d.quietTo,
+      variables: { orbitdmd: { trig: d.trig, time: d.time, days: d.days, every: d.every, parity: d.parity,
+        for_min: d.forMin, cmp: d.cmp, threshold: d.threshold, sun_event: d.sunEvent, sun_offset: d.sunOffset,
+        calendar: d.calendar, cal_event: d.calEvent, cal_offset: d.calOffset, cal_word: d.calWord,
+        per_every: d.perEvery, entities: d.trig === "periodic" ? d.entities.slice() : undefined,
+        display: d.mode, gif: d.gif, quiet: d.quiet, quiet_from: d.quietFrom, quiet_to: d.quietTo,
         cooldown: d.cooldown, priority: d.priority, repeat: d.repeat } },
       triggers: [trigger], conditions, actions,
     };
@@ -640,12 +1309,13 @@ class OrbitDMDPanel extends HTMLElement {
 
   async _send(d) {
     const data = this._notifyData(d);
-    const first = d.entities[0];
+    const first = ENTITY_TRIGS.includes(d.trig) ? d.entities[0] : null;
     const so = first && this._hass.states[first];
     try {
       // execute_script calcule les modeles {{ ... }} comme le ferait l'automatisation ;
       // "trigger" est imite avec la premiere entite
-      const variables = so ? { trigger: { entity_id: first, to_state: { name: this._name(first), state: so.state } } } : {};
+      const variables = so ? { trigger: { entity_id: first, to_state: { name: this._name(first), state: so.state } } }
+        : d.trig === "calendar" ? { trigger: { calendar_event: { summary: d.calWord.trim() || this._t.sample_event } } } : {};
       await this._hass.callWS({ type: "execute_script", sequence: [{ action: "orbitdmd.notify", data }], variables });
       this._toast(this._t.sent);
     } catch (err) {
@@ -669,7 +1339,7 @@ class OrbitDMDPanel extends HTMLElement {
 
   _openDraft(draft, view) {
     this._draft = draft;
-    this._q = ""; this._eq = ""; this._other = false;
+    this._q = ""; this._eq = ""; this._other = false; this._pickIcon = false;
     this._cat = (draft.gif || "").split("/")[0] || null;
     this._go(view);
   }
@@ -702,10 +1372,22 @@ class OrbitDMDPanel extends HTMLElement {
         } catch (err) { this._toast(fmt(t.error, err.message || err)); }
         this._confirm = null; this._render(); break;
       case "cat": this._cat = b.dataset.c; this._q = ""; this._render(); break;
-      case "gif":
+      case "gif": {
+        // l'icone suit la GIF tant qu'on n'en a pas choisi une autre
+        const linked = this._iconFor(d.gif);
         d.gif = b.dataset.gif;
+        if (!d.icon || d.icon === linked) d.icon = this._iconFor(d.gif);
+      }
         this.shadowRoot.querySelectorAll(".tile").forEach((x) => x.classList.toggle("on", x.dataset.gif === d.gif));
         break;
+      case "trig": d.trig = b.dataset.v; this._render(); break;
+      case "cmp": d.cmp = b.dataset.v; this._render(); break;
+      case "sunev": d.sunEvent = b.dataset.v; this._render(); break;
+      case "calev": d.calEvent = b.dataset.v; this._render(); break;
+      case "day":
+        d.days = d.days.includes(b.dataset.v) ? d.days.filter((k) => k !== b.dataset.v) : d.days.concat(b.dataset.v);
+        this._render(); break;
+      case "alldays": d.days = d.days.length === 7 ? [] : WEEKDAYS.slice(); this._render(); break;
       case "entity":
         if (!d.entities.includes(b.dataset.e)) d.entities.push(b.dataset.e);
         if (d.entities.length === 1) { d.to = null; this._other = false; }
@@ -714,35 +1396,50 @@ class OrbitDMDPanel extends HTMLElement {
       case "addentity": this._adding = true; this._render(); { const i = this.shadowRoot.getElementById("esearch"); if (i) i.focus(); } break;
       case "to": d.to = b.dataset.v === "" ? null : b.dataset.v; this._other = false; this._render(); break;
       case "other": this._other = true; this._render(); { const i = this.shadowRoot.getElementById("otherv"); if (i) i.focus(); } break;
+      case "mode":
+        d.mode = b.dataset.m;
+        this._pickIcon = false;
+        this._fixMode(d);
+        this._render(); break;
+      case "pickicon": this._pickIcon = true; this._render(); break;
+      case "icon":           // icone choisie dans la liste : la liste se referme
+        d.icon = b.dataset.g;
+        this._pickIcon = false;
+        this._render(); break;
       case "color":
         d.color = b.dataset.c;
         this.shadowRoot.querySelectorAll(".sw").forEach((x) => x.classList.toggle("on", x.dataset.c === d.color));
         this.shadowRoot.getElementById("cname").textContent = t.colors[d.color] || d.color;
-        this.shadowRoot.getElementById("pv").innerHTML = this._marquee();
+        this._refreshPreview();
         break;
       case "insert": {
         const k = b.dataset.k;
-        const tpl = k === "name" ? "{{ trigger.to_state.name }}"
-          : k === "value" ? this._valueTemplate("trigger.entity_id") : this._valueTemplate(`'${d.entities[0]}'`);
+        const tpl = k === "event" ? "{{ trigger.calendar_event.summary }}"
+          : k === "name" ? "{{ trigger.to_state.name }}"
+          : k === "value" ? this._valueTemplate("trigger.entity_id")
+          : k === "fixed" ? this._valueTemplate(`'${b.dataset.e}'`) : this._valueTemplate(`'${d.entities[0]}'`);
         d.message = `${d.message}${d.message ? " " : ""}${tpl}`;
         const i = this.shadowRoot.getElementById("msg"); i.value = d.message; i.focus();
-        this.shadowRoot.getElementById("pv").innerHTML = this._marquee();
+        this._refreshPreview();
         break;
       }
       case "test":
         if (!d.gif && !d.message) { this._toast(t.need_content); break; }
+        if (d.mode === "icon" && !d.message) { this._toast(t.need_icon_text); break; }
         await this._send(d); break;
       case "goto": this._go(Number(b.dataset.s)); break;
       case "back": this._go(this._view === 1 ? "home" : this._view - 1); break;
       case "next":
-        if (this._view === 2 && !d.entities.length) { this._toast(t.need_entity); break; }
+        if (this._view === 2) { const why = this._step2Missing(d); if (why) { this._toast(why); break; } }
         if (this._view === 3 && !d.gif && !d.message) { this._toast(t.need_content); break; }
+        if (this._view === 3 && d.mode === "icon" && !d.message) { this._toast(t.need_icon_text); break; }
         this._go(this._view + 1); break;
       case "save": {
         d.name = (d.name || "").trim();
         if (!d.name) { this._toast(t.need_name); break; }
-        if (!d.entities.length) { this._toast(t.need_entity); this._go(2); break; }
+        { const why = this._step2Missing(d); if (why) { this._toast(why); this._go(2); break; } }
         if (!d.gif && !d.message) { this._toast(t.need_content); this._go(3); break; }
+        if (d.mode === "icon" && !d.message) { this._toast(t.need_icon_text); this._go(3); break; }
         if (!d.id) d.id = `orbitdmd_${Date.now()}`;
         const cfg = this._config(d);
         try {
@@ -771,9 +1468,18 @@ class OrbitDMDPanel extends HTMLElement {
       case "esearch": this._eq = el.value; this._renderEntities(); break;
       case "panelsel": d.device = el.value; d.gif = ""; this._render(); break;
       case "otherv": d.to = el.value.trim() === "" ? null : el.value.trim(); break;
-      case "msg": d.message = el.value; this.shadowRoot.getElementById("pv").innerHTML = this._marquee(); break;
-      case "effect": d.effect = el.value; break;
-      case "speed": d.speed = el.value ? Number(el.value) : null; break;
+      case "msg": d.message = el.value; this._refreshPreview(); break;
+      case "effect":
+        d.effect = el.value;
+        if (!PAGED.includes(d.effect) && d.lines === 2) { d.lines = 1; this.shadowRoot.getElementById("lines").value = "1"; }
+        this._refreshPreview(); break;
+      case "lines":
+        d.lines = el.value === "2" ? 2 : 1;
+        if (d.lines === 2 && !PAGED.includes(d.effect)) { d.effect = "fondu"; this.shadowRoot.getElementById("effect").value = "fondu"; this._toast(this._t.lines_effect); }
+        this._refreshPreview(); break;
+      case "speed": d.speed = el.value ? Number(el.value) : null; this._refreshPreview(); break;
+      case "font": d.font = el.value; this._refreshPreview(); break;
+      case "size": d.size = el.value ? Number(el.value) : 0; this._refreshPreview(); break;
       case "passes": d.passes = el.value ? Number(el.value) : null; break;
       case "aname": d.name = el.value; break;
       case "quiet": d.quiet = el.checked; this._render(); break;
@@ -781,6 +1487,16 @@ class OrbitDMDPanel extends HTMLElement {
       case "qto": if (el.value) d.quietTo = el.value.slice(0, 5); break;
       case "cooldown": d.cooldown = Number(el.value) || 0; break;
       case "repeat": d.repeat = Number(el.value) || 0; break;
+      case "ttime": if (el.value) d.time = el.value.slice(0, 5); break;
+      case "formin": d.forMin = Number(el.value) || 0; break;
+      case "threshold": d.threshold = el.value.trim(); break;
+      case "sunoff": d.sunOffset = Number(el.value) || 0; break;
+      case "calendar": d.calendar = el.value; break;
+      case "caloff": d.calOffset = Number(el.value) || 0; break;
+      case "calword": d.calWord = el.value; break;
+      case "perevery": d.perEvery = Number(el.value) || 60; break;
+      case "every": d.every = Number(el.value) === 2 ? 2 : 1; this._render(); break;
+      case "parity": d.parity = Number(el.value) === 1 ? 1 : 0; break;
       case "prio":
         d.priority = el.checked;
         if (d.priority && d.color === "blanc") d.color = "rouge";     // prioritaire : rouge par defaut

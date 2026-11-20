@@ -20,6 +20,7 @@ class OrbitDMDCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
         self.api = api
         self.gifs: list[str] = []
+        self.fonts: list[str] = []       # polices du panneau (choix "Police" de la page OrbitDMD)
         self._gifs_at: datetime | None = None
         self._version: str | None = None
 
@@ -48,3 +49,7 @@ class OrbitDMDCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         notify = NOTIFY_CATEGORY.lower() + "/"
         self.gifs = sorted(gifs, key=lambda g: (not g.lower().startswith(notify), g.lower()))
         self._gifs_at = dt_util.utcnow()
+        try:
+            self.fonts = sorted(await self.api.fonts(), key=str.lower)
+        except OrbitDMDError as err:
+            _LOGGER.debug("liste des polices : %s", err)

@@ -133,6 +133,14 @@
         "blink": {
           "name": "Piscar",
           "description": "Texto a piscar (alerta prioritário)."
+        },
+        "icon": {
+          "name": "Ícone",
+          "description": "Pequeno GIF animado à esquerda do texto: Icones/nome.gif (o texto desliza ao lado)."
+        },
+        "lines": {
+          "name": "Linhas",
+          "description": "2: o texto em duas linhas, uma por baixo da outra (efeitos Sobe, Desce, Letra a letra, Chuva, Desvanecer)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Cor",
       "speed": "Velocidade",
       "passes": "Passagens",
-      "blink": "Piscar"
+      "blink": "Piscar",
+      "icon": "Ícone"
     }
   },
   "issues": {

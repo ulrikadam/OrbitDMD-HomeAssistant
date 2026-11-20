@@ -38,6 +38,10 @@ notify:
       example: "Orbitron.ttf"
       selector:
         text:
+    icon:
+      example: "Icones/temperature.gif"
+      selector:
+        text:
     blink:
       selector:
         boolean:
@@ -46,3 +50,9 @@ notify:
         number:
           min: 0
           max: 48
+    lines:
+      selector:
+        number:
+          min: 1
+          max: 2
+          mode: box

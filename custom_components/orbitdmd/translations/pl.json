@@ -133,6 +133,14 @@
         "blink": {
           "name": "Miganie",
           "description": "Migający tekst (powiadomienie priorytetowe)."
+        },
+        "icon": {
+          "name": "Ikona",
+          "description": "Mały animowany GIF po lewej stronie tekstu: Icones/nazwa.gif (tekst przewija się obok)."
+        },
+        "lines": {
+          "name": "Wiersze",
+          "description": "2: tekst w dwóch wierszach, jeden pod drugim (efekty W górę, W dół, Litera po literze, Deszcz, Zanikanie)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Kolor",
       "speed": "Prędkość",
       "passes": "Przebiegi",
-      "blink": "Miganie"
+      "blink": "Miganie",
+      "icon": "Ikona"
     }
   },
   "issues": {

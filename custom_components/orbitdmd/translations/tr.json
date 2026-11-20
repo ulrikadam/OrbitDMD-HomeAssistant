@@ -133,6 +133,14 @@
         "blink": {
           "name": "Yanıp sönme",
           "description": "Yanıp sönen metin (öncelikli uyarı)."
+        },
+        "icon": {
+          "name": "Simge",
+          "description": "Metnin solunda küçük hareketli GIF: Icones/ad.gif (metin yanında kayar)."
+        },
+        "lines": {
+          "name": "Satırlar",
+          "description": "2: metin alt alta iki satırda (Yukarı, Aşağı, Harf harf, Yağmur, Solma efektleri)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Renk",
       "speed": "Hız",
       "passes": "Geçişler",
-      "blink": "Yanıp sönme"
+      "blink": "Yanıp sönme",
+      "icon": "Simge"
     }
   },
   "issues": {

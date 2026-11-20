@@ -133,6 +133,14 @@
         "blink": {
           "name": "Clignote",
           "description": "Texte clignotant (alerte prioritaire)."
+        },
+        "icon": {
+          "name": "Icône",
+          "description": "Petite GIF animée à gauche du texte : Icones/nom.gif (le texte défile à côté)."
+        },
+        "lines": {
+          "name": "Lignes",
+          "description": "2 : le texte sur deux lignes, l'une sous l'autre (effets Monte, Descend, Lettre par lettre, Pluie, Fondu)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Couleur",
       "speed": "Vitesse",
       "passes": "Passages",
-      "blink": "Clignote"
+      "blink": "Clignote",
+      "icon": "Icône"
     }
   },
   "issues": {

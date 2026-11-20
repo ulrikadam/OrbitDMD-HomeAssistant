@@ -18,8 +18,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import OrbitDMDApi, OrbitDMDAuthError, OrbitDMDError
 from homeassistant.helpers import issue_registry as ir
 
-from .const import (ATTR_BLINK, ATTR_COLOR, ATTR_DEVICE, ATTR_EFFECT, ATTR_FONT, ATTR_GIF, ATTR_MESSAGE, ATTR_PASSES,
-                    ATTR_SIZE, ATTR_SPEED, CONF_HOST, CONF_PANEL_ID, CONF_PASSWORD, DOMAIN, MIN_PANEL_VERSION,
+from .const import (ATTR_BLINK, ATTR_COLOR, ATTR_ICON, ATTR_DEVICE, ATTR_EFFECT, ATTR_FONT, ATTR_GIF, ATTR_MESSAGE, ATTR_PASSES,
+                    ATTR_LINES, ATTR_SIZE, ATTR_SPEED, CONF_HOST, CONF_PANEL_ID, CONF_PASSWORD, DOMAIN, MIN_PANEL_VERSION,
                     RELEASES_URL, SERVICE_NOTIFY, panel_id, panel_too_old)
 from .coordinator import OrbitDMDCoordinator
 from .panel import async_setup_panel
@@ -40,7 +40,9 @@ NOTIFY_SCHEMA = vol.Schema({
     vol.Optional(ATTR_PASSES): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
     vol.Optional(ATTR_FONT): cv.string,
     vol.Optional(ATTR_SIZE): vol.All(vol.Coerce(int), vol.Range(min=0, max=48)),
+    vol.Optional(ATTR_LINES): vol.All(vol.Coerce(int), vol.Range(min=1, max=2)),
     vol.Optional(ATTR_BLINK): cv.boolean,
+    vol.Optional(ATTR_ICON): cv.string,
 })
 
 
@@ -121,7 +123,9 @@ async def send_notification(coordinator: OrbitDMDCoordinator, data: dict[str, An
         "passages": data.get(ATTR_PASSES),
         "police": data.get(ATTR_FONT),
         "taille": data.get(ATTR_SIZE),
+        "lignes": data.get(ATTR_LINES),
         "clignote": "1" if data.get(ATTR_BLINK) else None,
+        "icone": data.get(ATTR_ICON),
     }
     if not fields["message"] and not fields["gif"]:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="need_content")

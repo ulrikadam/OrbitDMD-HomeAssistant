@@ -2,6 +2,9 @@
 
 <img src="custom_components/orbitdmd/brand/logo.png" alt="OrbitDMD" height="64">
 
+[![HACS : boutique officielle](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://hacs.xyz)
+[![Ouvrir dans HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ulrikadam&repository=OrbitDMD-HomeAssistant&category=integration)
+
 Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/ulrikadam/OrbitDMD)
 (Raspberry Pi 3 + panneaux HUB75). Elle parle directement à la page web du panneau :
 **pas besoin de MQTT ni de YAML**.
@@ -23,9 +26,14 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
   (« Nouvel appareil découvert ») ; il suffit d'indiquer le mot de passe de sa page web.
 - **Page OrbitDMD** dans la barre latérale : un assistant en 4 étapes crée les **alertes**
   1. choisir une **GIF** parmi les vignettes animées du panneau (catégorie Domotique en premier) ;
-  2. choisir **quand** : une ou plusieurs entités (sonnette, portes, fenêtres…) et l'état qui compte ;
+  2. choisir **quand** : quand une entité change (sonnette, portes, fenêtres…), quand une valeur passe un
+     seuil (gel, batterie faible…), à un jour et une heure (poubelles, une semaine sur deux possible),
+     **à intervalle régulier** (toutes les heures, 4 fois par heure…), au lever ou au coucher du soleil,
+     ou à un événement d'agenda ; avec « pendant au moins X minutes » si besoin ;
   3. écrire le **texte** (avec la valeur d'un capteur, arrondie : « 21,5 °C »), couleur, effet, vitesse,
-     passages, avec un aperçu et un bouton **Tester sur le panneau** ;
+     passages, **police**, **taille**, **une ou deux lignes**, et l'affichage : la GIF complète puis le texte,
+     ou **l'icône de la GIF à gauche et le texte à côté** ; un **aperçu animé** montre le texte comme sur le
+     panneau (même police, même découpage), et le bouton **Tester sur le panneau** l'envoie pour de vrai ;
   4. **options** : heures de silence, pas plus d'une fois toutes les X minutes, **alerte prioritaire**
      (texte clignotant, affichée même la nuit, répétée tant que l'état ne revient pas à la normale).
 
@@ -36,7 +44,8 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
 - **Interrupteurs** : pause (image figée), luminosité heure par heure.
 - **Boutons** : afficher l'heure, afficher la météo, redémarrer.
 - **Capteurs** : GIF affichée, écran, température du processeur, adresse IP, version.
-- **Action** `orbitdmd.notify` (texte, GIF, effet, couleur, vitesse, passages, clignotement), action d'appareil
+- **Action** `orbitdmd.notify` (texte, GIF, icône, effet, couleur, police, taille, lignes, vitesse, passages,
+  clignotement), action d'appareil
   « Afficher une notification » avec la liste des GIF, et entité de notification (`notify.send_message`).
 - **12 langues** : français, anglais, néerlandais, espagnol, russe, allemand, italien, portugais, polonais,
   ukrainien, turc et tchèque (la langue de votre profil Home Assistant).
@@ -45,7 +54,8 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
 
 ## Ce qu'il faut
 
-- Un panneau OrbitDMD avec le programme **1.6.0 ou plus récent**
+- Un panneau OrbitDMD avec le programme **1.6.0 ou plus récent**, **1.7.0** pour l'icône + texte, les deux
+  lignes et la vraie police dans l'aperçu
   ([dernière version](https://github.com/ulrikadam/OrbitDMD/releases/latest) ; à installer depuis la page web
   du panneau : Système → Nouveau programme).
 - Home Assistant **2025.1** ou plus récent (le logo de l'intégration s'affiche à partir de 2026.3).
@@ -53,11 +63,15 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
 ## Installation
 
 ### Avec HACS (conseillé)
-1. HACS → menu ⋮ → **Dépôts personnalisés** → `https://github.com/ulrikadam/OrbitDMD-HomeAssistant`, type **Intégration**.
-2. Installez **OrbitDMD**, puis redémarrez Home Assistant.
+OrbitDMD est dans la **boutique officielle de HACS**.
+1. Ouvrez **HACS**, cherchez **OrbitDMD** (ou cliquez sur le bouton « Ouvrir dans HACS » en haut de cette page).
+2. Cliquez sur **Télécharger**, puis redémarrez Home Assistant.
 3. Le panneau apparaît dans **Paramètres → Appareils et services** (« Découvert ») : cliquez sur **Ajouter**
    et indiquez le mot de passe de sa page web. Sinon : **Ajouter une intégration → OrbitDMD**, adresse du
    panneau (par exemple `orbitdmd.local` ou son adresse IP) et mot de passe.
+
+Si OrbitDMD n'apparaît pas encore dans la recherche : HACS → menu ⋮ → **Dépôts personnalisés** →
+`https://github.com/ulrikadam/OrbitDMD-HomeAssistant`, type **Intégration**, puis suivez les mêmes étapes.
 
 ### À la main
 Copiez le dossier `custom_components/orbitdmd` dans le dossier `config/custom_components/` de
@@ -89,8 +103,11 @@ HUB75 panels). It talks directly to the panel's web page: **no MQTT, no YAML**.
 - **Automatic discovery**: the panel shows up in *Settings → Devices & services*; you only enter the password
   of its web page.
 - **OrbitDMD page** in the sidebar: a 4-step wizard creates **alerts** — pick a GIF from the panel's animated
-  thumbnails, choose one or more triggering entities and the state, write the text (with a rounded sensor value),
-  colour, effect, speed and passes (preview + "Test on the panel"), then options: quiet hours, cooldown and
+  thumbnails; choose when: an entity changes, a value crosses a threshold, a day and time, **at regular
+  intervals** (every hour, 4 times an hour…), sunrise or sunset, or a calendar event; write the text (with a
+  rounded sensor value), colour, effect, speed, passes, **font**, **size**, **one or two lines**, and the layout
+  (the full GIF then the text, or **the GIF's icon on the left with the text beside it**), with an **animated
+  preview** that matches the panel and "Test on the panel"; then options: quiet hours, cooldown and
   **priority alerts** (blinking text, shown even at night, repeated until the state goes back to normal).
   Each alert is a regular Home Assistant automation in the "OrbitDMD" category; Test, Edit, Duplicate and Delete
   buttons, plus **Manage the panel** to open its web page.
@@ -100,11 +117,14 @@ HUB75 panels). It talks directly to the panel's web page: **no MQTT, no YAML**.
 - **12 languages**, **repairs** issue when the panel program is too old, downloadable **diagnostics**
   (password and Wi-Fi name redacted).
 
-**Requirements**: OrbitDMD panel program **1.6.0 or later**, Home Assistant **2025.1 or later** (logo from 2026.3).
+**Requirements**: OrbitDMD panel program **1.6.0 or later** (**1.7.0** for icon + text, two lines and the real
+font in the preview), Home Assistant **2025.1 or later** (logo from 2026.3).
 
-**Install**: HACS → ⋮ → Custom repositories → `https://github.com/ulrikadam/OrbitDMD-HomeAssistant`
-(type Integration), install **OrbitDMD**, restart Home Assistant; the panel is then discovered automatically
-(or *Add integration → OrbitDMD*). Manual install: copy `custom_components/orbitdmd` into `config/custom_components/`.
+**Install**: OrbitDMD is in the **default HACS store**: open HACS, search for **OrbitDMD** (or use the "Open in
+HACS" button above), download it and restart Home Assistant; the panel is then discovered automatically (or *Add
+integration → OrbitDMD*). If it does not show up in the search yet: HACS → ⋮ → Custom repositories →
+`https://github.com/ulrikadam/OrbitDMD-HomeAssistant` (type Integration). Manual install: copy
+`custom_components/orbitdmd` into `config/custom_components/`.
 
 Use either this integration **or** the panel's MQTT connection, not both (the panel would appear twice).
 

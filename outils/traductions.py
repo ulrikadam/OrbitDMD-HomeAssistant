@@ -274,8 +274,44 @@ E = {
 }
 
 
-def build(t: dict, e: tuple) -> dict:
+# champ "icone" (panneau 1.7.0+) : petite GIF animee a gauche du texte
+ICON = {
+ "fr": ("Icône", "Petite GIF animée à gauche du texte : Icones/nom.gif (le texte défile à côté)."),
+ "en": ("Icon", "Small animated GIF left of the text: Icones/name.gif (the text scrolls beside it)."),
+ "nl": ("Pictogram", "Kleine geanimeerde GIF links van de tekst: Icones/naam.gif (de tekst schuift ernaast)."),
+ "es": ("Icono", "GIF animado pequeño a la izquierda del texto: Icones/nombre.gif (el texto se desplaza al lado)."),
+ "ru": ("Значок", "Маленький анимированный GIF слева от текста: Icones/имя.gif (текст бежит рядом)."),
+ "de": ("Symbol", "Kleines animiertes GIF links vom Text: Icones/name.gif (der Text läuft daneben)."),
+ "it": ("Icona", "Piccola GIF animata a sinistra del testo: Icones/nome.gif (il testo scorre accanto)."),
+ "pt": ("Ícone", "Pequeno GIF animado à esquerda do texto: Icones/nome.gif (o texto desliza ao lado)."),
+ "pl": ("Ikona", "Mały animowany GIF po lewej stronie tekstu: Icones/nazwa.gif (tekst przewija się obok)."),
+ "uk": ("Значок", "Маленький анімований GIF ліворуч від тексту: Icones/назва.gif (текст біжить поруч)."),
+ "tr": ("Simge", "Metnin solunda küçük hareketli GIF: Icones/ad.gif (metin yanında kayar)."),
+ "cs": ("Ikona", "Malý animovaný GIF vlevo od textu: Icones/název.gif (text běží vedle)."),
+}
+
+
+# champ "lignes" (panneau 1.7.0+) : deux lignes par page pour les effets en pages
+LINES = {
+ "fr": ("Lignes", "2 : le texte sur deux lignes, l'une sous l'autre (effets Monte, Descend, Lettre par lettre, Pluie, Fondu)."),
+ "en": ("Lines", "2: the text on two lines, one under the other (effects Up, Down, Letter by letter, Rain, Fade)."),
+ "nl": ("Regels", "2: de tekst op twee regels onder elkaar (effecten Omhoog, Omlaag, Letter voor letter, Regen, Vervagen)."),
+ "es": ("Líneas", "2: el texto en dos líneas, una debajo de otra (efectos Sube, Baja, Letra a letra, Lluvia, Fundido)."),
+ "ru": ("Строки", "2: текст в две строки, одна под другой (эффекты Вверх, Вниз, По буквам, Дождь, Затухание)."),
+ "de": ("Zeilen", "2: der Text auf zwei Zeilen untereinander (Effekte Hoch, Runter, Buchstabe für Buchstabe, Regen, Überblenden)."),
+ "it": ("Righe", "2: il testo su due righe, una sotto l'altra (effetti Sale, Scende, Lettera per lettera, Pioggia, Dissolvenza)."),
+ "pt": ("Linhas", "2: o texto em duas linhas, uma por baixo da outra (efeitos Sobe, Desce, Letra a letra, Chuva, Desvanecer)."),
+ "pl": ("Wiersze", "2: tekst w dwóch wierszach, jeden pod drugim (efekty W górę, W dół, Litera po literze, Deszcz, Zanikanie)."),
+ "uk": ("Рядки", "2: текст у два рядки, один під одним (ефекти Вгору, Вниз, По літерах, Дощ, Згасання)."),
+ "tr": ("Satırlar", "2: metin alt alta iki satırda (Yukarı, Aşağı, Harf harf, Yağmur, Solma efektleri)."),
+ "cs": ("Řádky", "2: text na dvou řádcích pod sebou (efekty Nahoru, Dolů, Písmeno po písmenu, Déšť, Prolínání)."),
+}
+
+
+def build(t: dict, e: tuple, icon: tuple, lines: tuple) -> dict:
     fields = dict(zip(FIELDS, t["fields"]))
+    fields["icon"] = icon
+    fields["lines"] = lines
     return {
         "config": {
             "flow_title": "{name}",
@@ -299,7 +335,7 @@ def build(t: dict, e: tuple) -> dict:
                                 "fields": {k: {"name": v[0], "description": v[1]} for k, v in fields.items()}}},
         "selector": {"effect": {"options": dict(zip(EFFECTS, t["effects"]))}, "color": {"options": dict(zip(COLORS, t["colors"]))}},
         "device_automation": {"action_type": {"notify": t["svc"]},
-                              "extra_fields": {k: fields[k][0] for k in ("message", "gif", "effect", "color", "speed", "passes", "blink")}},
+                              "extra_fields": {k: fields[k][0] for k in ("message", "gif", "effect", "color", "speed", "passes", "blink", "icon")}},
         "issues": {"panel_too_old": {"title": e[0], "description": e[1]}},
         "exceptions": {"panel_too_old": {"message": e[2]}, "no_panel": {"message": e[3]},
                        "need_content": {"message": e[4]}, "panel_error": {"message": e[5]}},
@@ -316,7 +352,7 @@ def main() -> None:
         need = ("{name}", "{version}", "{minimum}")
         assert "{name}" in e[0] and all(k in e[1] for k in need) and all(k in e[2] for k in need), lang
         assert "{error}" in e[5], lang
-        text = json.dumps(build(t, e), ensure_ascii=False, indent=2) + "\n"
+        text = json.dumps(build(t, e, ICON[lang], LINES[lang]), ensure_ascii=False, indent=2) + "\n"
         with open(os.path.join(D, "translations", f"{lang}.json"), "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
         if lang == "en":

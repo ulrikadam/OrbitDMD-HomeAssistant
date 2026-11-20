@@ -133,6 +133,14 @@
         "blink": {
           "name": "Blink",
           "description": "Blinking text (priority alert)."
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "Small animated GIF left of the text: Icones/name.gif (the text scrolls beside it)."
+        },
+        "lines": {
+          "name": "Lines",
+          "description": "2: the text on two lines, one under the other (effects Up, Down, Letter by letter, Rain, Fade)."
         }
       }
     }
@@ -176,7 +184,8 @@
       "color": "Colour",
       "speed": "Speed",
       "passes": "Passes",
-      "blink": "Blink"
+      "blink": "Blink",
+      "icon": "Icon"
     }
   },
   "issues": {
