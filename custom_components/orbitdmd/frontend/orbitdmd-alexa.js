@@ -6,13 +6,17 @@
 // evenements, dans l'ordre du menu ; "on" : actif la premiere fois
 export const EVENTS = [
   { key: "timer_start", sensor: "timer", tokens: ["name", "duration"], on: true, icon: "enceinte_allumee", color: "turquoise", effect: "fondu" },
+  // pendant un minuteur, toutes les "every" minutes : le temps qui reste
+  { key: "timer_left", sensor: "timer", tokens: ["name", "remaining"], on: false, icon: "enceinte_allumee", color: "turquoise", effect: "fondu", every: 1 },
   { key: "timer_done", sensor: "timer", tokens: ["name"], on: true, icon: "cuisson_terminee", color: "orange", effect: "fondu", prio: true },
   { key: "timer_cancel", sensor: "timer", tokens: ["name"], on: false, icon: "enceinte_eteinte", color: "blanc", effect: "fondu" },
   { key: "reminder", sensor: "reminder", tokens: ["text"], on: true, icon: "courrier_recu", color: "jaune", effect: "defile" },
   { key: "alarm", sensor: "alarm", tokens: ["time"], on: false, icon: "mode_nuit_active", color: "ambre", effect: "fondu" },
   { key: "music", sensor: "media", tokens: ["title", "artist"], on: false, icon: "enceinte_allumee", color: "violet", effect: "defile" },
 ];
-export const TOKENS = ["name", "duration", "text", "time", "title", "artist"];
+export const TOKENS = ["name", "duration", "remaining", "text", "time", "title", "artist"];
+export const EVERY = [1, 2, 5, 10];           // "temps restant" : toutes les X minutes
+const PAGED = ["monte", "descend", "lettres", "pluie", "fondu"];   // effets en pages (deux lignes possibles)
 export const ID_PREFIX = "orbitdmd_alexa_";
 const SUFFIX = { "_next Timer": "timer", "_next Alarm": "alarm", "_next Reminder": "reminder" };
 
@@ -54,7 +58,7 @@ export function defaultSettings(t, devices, panelDevice, icons) {
   for (const ev of EVENTS) {
     const icon = `Icones/${ev.icon}.gif`;
     events[ev.key] = { on: ev.on, text: t[`ax_text_${ev.key}`], icon: has(icon) ? icon : (icons[0] || ""),
-      color: ev.color, effect: ev.effect, prio: !!ev.prio };
+      color: ev.color, effect: ev.effect, prio: !!ev.prio, font: "", size: 0, lines: 1, speed: null, passes: null, every: ev.every || 0 };
   }
   return { device: panelDevice, echos: devices.filter((d) => d.echo).map((d) => d.id), room: false,
     quiet: false, quietFrom: "23:00", quietTo: "07:00", events };
@@ -75,7 +79,10 @@ export function settingsFrom(configs, t, devices, panelDevice, icons) {
     const m = cfg.variables.orbitdmd;
     if (!s.events[m.event]) continue;
     Object.assign(s.events[m.event], { on: true, text: String(m.text ?? s.events[m.event].text), icon: m.icon || s.events[m.event].icon,
-      color: m.color || s.events[m.event].color, effect: m.effect || s.events[m.event].effect, prio: !!m.prio });
+      color: m.color || s.events[m.event].color, effect: m.effect || s.events[m.event].effect, prio: !!m.prio,
+      font: m.font ? String(m.font) : "", size: Number(m.size) || 0, lines: Number(m.lines) === 2 ? 2 : 1,
+      speed: m.speed ? Number(m.speed) : null, passes: m.passes ? Number(m.passes) : null,
+      every: EVERY.includes(Number(m.every)) ? Number(m.every) : s.events[m.event].every });
   }
   return s;
 }
@@ -102,7 +109,7 @@ export function textTemplate(text) {
 }
 
 // valeurs calculees au moment de l'alerte, selon l'evenement (Jinja, place avant le texte)
-function prelude(key, t) {
+function prelude(key, t, entities) {
   const word = jstr(t.ax_word_timer);
   const room = "{%- set ax_room = area_name(trigger.entity_id) or device_attr(device_id(trigger.entity_id), 'name_by_user') or device_attr(device_id(trigger.entity_id), 'name') or '' -%}";
   const P = {
@@ -122,21 +129,40 @@ function prelude(key, t) {
       + "{%- set gone = ((f.get('brief') or {}).get('active') or []) | rejectattr('id', 'in', ids) | list -%}"
       + "{%- set lab = (gone[0].get('label') if gone else '') or '' -%}"
       + `{%- set ax_name = lab if lab else ${word} -%}`,
+    // le minuteur en cours qui finit le plus tot, parmi les appareils coches, et le temps qui lui reste
+    timer_left: nearest(entities)
+      + "{%- set lab = state_attr(best, 'timer') or '' if best else '' -%}"
+      + `{%- set ax_name = lab if lab else ${word} -%}`
+      + "{%- set secs = (ns.ts - as_timestamp(now())) | int(0) -%}"
+      + "{%- set mins = ((secs + 59) // 60) -%}"
+      + "{%- set ax_remaining = (secs ~ ' s') if secs < 60 else (mins ~ ' min' if mins < 60 else (mins // 60) ~ ' h' ~ (' %02d' % (mins % 60) if mins % 60 else '')) -%}",
     reminder: "{%- set ax_text = state_attr(trigger.entity_id, 'reminder') or '' -%}",
     alarm: "{%- set ax_time = now().strftime('%H:%M') -%}",
     music: "{%- set ax_title = trigger.to_state.attributes.get('media_title') or '' -%}{%- set ax_artist = trigger.to_state.attributes.get('media_artist') or '' -%}",
   };
+  if (key === "timer_left") return P[key] + "{%- set ax_room = area_name(best) or device_attr(device_id(best), 'name_by_user') or device_attr(device_id(best), 'name') or '' if best else '' -%}";
   return room + P[key];
 }
 
+// Jinja : "best" = le capteur dont le minuteur finit le plus tot (dans plus de 30 s), "ns.ts" son heure
+function nearest(entities) {
+  return `{%- set ns = namespace(best=none, ts=0) -%}{%- for e in ${JSON.stringify(entities).replace(/"/g, "'")} -%}`
+    + "{%- set ts = as_timestamp(states(e), 0) -%}"
+    + "{%- if ts > as_timestamp(now()) + 30 and (ns.best is none or ts < ns.ts) -%}{%- set ns.best = e -%}{%- set ns.ts = ts -%}{%- endif -%}"
+    + "{%- endfor -%}{%- set best = ns.best -%}";
+}
+
 // modele complet du message : valeurs, piece (option), texte ; espaces en trop retires
-export function messageTemplate(key, ev, settings, t) {
+export function messageTemplate(key, ev, settings, t, entities = []) {
   const roomPart = settings.room ? "{{ ax_room ~ ' : ' if ax_room else '' }}" : "";
-  return `${prelude(key, t)}{%- set out -%}${roomPart}${textTemplate(ev.text)}{%- endset -%}{{ out | regex_replace('\\s+', ' ') | trim }}`;
+  return `${prelude(key, t, entities)}{%- set out -%}${roomPart}${textTemplate(ev.text)}{%- endset -%}{{ out | regex_replace('\\s+', ' ') | trim }}`;
 }
 
 // declencheurs et conditions d'un evenement, pour les entites des appareils coches
-function triggerPart(key, entities) {
+function triggerPart(key, entities, ev) {
+  if (key === "timer_left") return {
+    triggers: [{ trigger: "time_pattern", minutes: `/${ev.every || 1}` }],
+    conditions: [{ condition: "template", value_template: `${nearest(entities)}{{ best is not none }}` }] };
   if (key === "timer_start") return {
     triggers: [{ trigger: "state", entity_id: entities, not_from: ["unavailable"] }],
     conditions: [{ condition: "template", value_template: "{{ trigger.from_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', ''] and (trigger.to_state.attributes.get('total_active', 0) | int(0)) > (trigger.from_state.attributes.get('total_active', 0) | int(0)) }}" }] };
@@ -160,27 +186,38 @@ export function alexaConfigs(settings, devices, t) {
     const e = settings.events[ev.key];
     const entities = chosen.map((d) => d[ev.sensor]).filter(Boolean);
     if (!e.on || !entities.length) { remove.push(id); continue; }
-    const { triggers, conditions } = triggerPart(ev.key, entities);
+    const { triggers, conditions } = triggerPart(ev.key, entities, e);
     if (settings.quiet && !e.prio) {
       conditions.push({ condition: "not", conditions: [{ condition: "time", after: `${settings.quietFrom}:00`, before: `${settings.quietTo}:00` }] });
     }
-    const data = { device_id: [settings.device], icon: e.icon, message: messageTemplate(ev.key, e, settings, t), color: e.color, effect: e.effect };
-    if (e.prio) { data.blink = true; data.passes = 2; }
+    const data = notifyData(e, settings.device, messageTemplate(ev.key, e, settings, t, entities));
     save[id] = {
       id, alias: `OrbitDMD – Alexa : ${t[`ax_ev_${ev.key}`]}`, description: t.ax_description,
       variables: { orbitdmd: { kind: "alexa", event: ev.key, echos: settings.echos.slice(), room: settings.room,
         quiet: settings.quiet, quiet_from: settings.quietFrom, quiet_to: settings.quietTo,
-        text: e.text, icon: e.icon, color: e.color, effect: e.effect, prio: e.prio, display: "icon" } },
+        text: e.text, icon: e.icon, color: e.color, effect: e.effect, prio: e.prio, display: "icon",
+        font: e.font, size: e.size, lines: e.lines, speed: e.speed, passes: e.passes, every: e.every } },
       triggers, conditions, actions: [{ action: "orbitdmd.notify", data }],
-      mode: "queued", max: 5,
+      ...(ev.key === "timer_left" ? { mode: "single", max_exceeded: "silent" } : { mode: "queued", max: 5 }),
     };
   }
   return { save, remove };
 }
 
+export function notifyData(e, device, message) {
+  const data = { device_id: [device], icon: e.icon, message, color: e.color, effect: e.effect };
+  if (e.font) data.font = e.font;
+  if (e.size) data.size = e.size;
+  if (e.lines === 2 && PAGED.includes(e.effect)) data.lines = 2;
+  if (e.speed) data.speed = e.speed;
+  if (e.passes) data.passes = e.passes;
+  if (e.prio) { data.blink = true; if (!e.passes) data.passes = 2; }
+  return data;
+}
+
 // texte d'exemple (apercu, bouton Tester) : jetons remplaces par des valeurs d'exemple
 export function sampleText(key, ev, settings, t, roomName) {
-  const values = { name: t.ax_sample_name, duration: t.ax_sample_duration, text: t.ax_sample_text, time: "07:30",
+  const values = { name: t.ax_sample_name, duration: t.ax_sample_duration, remaining: t.ax_sample_remaining, text: t.ax_sample_text, time: "07:30",
     title: t.ax_sample_title, artist: t.ax_sample_artist };
   let s = String(ev.text || "");
   for (const k of TOKENS) s = s.split(`{${k}}`).join(values[k]);

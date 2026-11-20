@@ -1218,7 +1218,8 @@ class OrbitDMDPanel extends HTMLElement {
   // brouillon d'apercu : icone + texte d'exemple, comme le panneau l'affichera
   _axDraft(key, e, s, room) {
     return { device: s.device, mode: "icon", icon: e.icon, gif: "", message: AX.sampleText(key, e, s, this._t, room),
-      color: e.color, effect: e.effect, priority: e.prio, speed: null, font: "", size: 0, lines: 1, entities: [], trig: "entity", calWord: "" };
+      color: e.color, effect: e.effect, priority: e.prio, speed: e.speed || null, font: e.font || "", size: e.size || 0,
+      lines: e.lines === 2 ? 2 : 1, entities: [], trig: "entity", calWord: "" };
   }
 
   _axPreview(key) {
@@ -1228,6 +1229,20 @@ class OrbitDMDPanel extends HTMLElement {
     box.innerHTML = this._marquee(this._axDraft(key, s.events[key], s, this._axRoom()));
     this._observe();
     this._tune();
+  }
+
+  // choix police, taille, lignes, vitesse, passages (memes listes qu'a l'etape 3)
+  _styleOpts(o, device) {
+    const t = this._t;
+    const fonts = this._panelOf(device).fonts || [];
+    const font = [["", t.dflt], [PIXEL, t.font_pixel]].concat(fonts.map((x) => [x, fontLabel(x)]))
+      .concat(o.font && o.font !== PIXEL && !fonts.includes(o.font) ? [[o.font, fontLabel(o.font)]] : [])
+      .map(([v, l]) => `<option value="${esc(v)}" ${(o.font || "") === v ? "selected" : ""}>${esc(l)}</option>`).join("");
+    const size = `<option value="">${t.size_auto}</option>` + SIZES.concat(o.size && !SIZES.includes(o.size) ? [o.size] : [])
+      .map((v) => `<option value="${v}" ${o.size === v ? "selected" : ""}>${fmt(t.size_px, v)}</option>`).join("");
+    const num = (sel, max) => `<option value="">${t.dflt}</option>` + Array.from({ length: max }, (_, i) => `<option ${sel === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("");
+    const lines = `<option value="1" ${o.lines !== 2 ? "selected" : ""}>${t.lines_1}</option><option value="2" ${o.lines === 2 ? "selected" : ""}>${t.lines_2}</option>`;
+    return { font, size, speed: num(o.speed, 10), passes: num(o.passes, 5), lines };
   }
 
   _alexaView() {
@@ -1251,6 +1266,7 @@ class OrbitDMDPanel extends HTMLElement {
       const head = `<label class="lead"><input type="checkbox" data-ax="on" data-ev="${k}" ${e.on ? "checked" : ""}><b>${esc(t[`ax_ev_${k}`])}</b></label>
         <small class="muted">${esc(t[`ax_when_${k}`])}</small>`;
       if (!e.on) return `<div class="card axev off">${head}</div>`;
+      const st = this._styleOpts(e, s.device);
       const toks = ev.tokens.map((tok) => `<button data-a="axtok" data-ev="${k}" data-k="${tok}">+ ${esc(t[`ax_tok_${tok}`])}</button>`).join("");
       const icons = this._ax.pick === k ? `<div class="icons">${this._axIcons(s.device).map((g) => `<button class="ico ${e.icon === g ? "on" : ""}"
           data-a="axicon" data-ev="${k}" data-g="${esc(g)}" title="${esc(gifLabel(g))}">${this._screen(s.device, g, "icobox")}</button>`).join("")}</div>` : "";
@@ -1261,8 +1277,15 @@ class OrbitDMDPanel extends HTMLElement {
             <label class="field">${t.text}<input type="text" maxlength="200" data-ax="text" data-ev="${k}" value="${esc(e.text)}"></label>
             <div class="bar">${toks}</div>
             <div class="cols">
+              ${ev.every ? `<label class="field">${t.ax_every}<select data-ax="every" data-ev="${k}">${AX.EVERY.map((m) =>
+                `<option value="${m}" ${e.every === m ? "selected" : ""}>${esc(fmt(t.ax_every_n, m))}</option>`).join("")}</select></label>` : ""}
               <label class="field">${t.color}<select data-ax="color" data-ev="${k}">${colorOpts(e.color)}</select></label>
               <label class="field">${t.effect}<select data-ax="effect" data-ev="${k}">${effectOpts(e.effect)}</select></label>
+              <label class="field">${t.speed}<select data-ax="speed" data-ev="${k}">${st.speed}</select></label>
+              <label class="field">${t.passes}<select data-ax="passes" data-ev="${k}">${st.passes}</select></label>
+              <label class="field">${t.font}<select data-ax="font" data-ev="${k}">${st.font}</select></label>
+              <label class="field">${t.size}<select data-ax="size" data-ev="${k}">${st.size}</select></label>
+              <label class="field" title="${esc(t.lines_help)}">${t.lines}<select data-ax="lines" data-ev="${k}">${st.lines}</select></label>
             </div>
             <label class="opt"><input type="checkbox" data-ax="prio" data-ev="${k}" ${e.prio ? "checked" : ""}>${esc(t.ax_prio)}</label>
             <div class="row"><div class="ico on">${this._screen(s.device, e.icon, "icobox")}</div>
@@ -1296,7 +1319,20 @@ class OrbitDMDPanel extends HTMLElement {
       case "on": e.on = el.checked; this._render(); return;
       case "text": e.text = el.value; break;
       case "color": e.color = el.value; break;
-      case "effect": e.effect = el.value; break;
+      case "effect":
+        e.effect = el.value;
+        // un texte qui defile reste sur une ligne
+        if (!PAGED.includes(e.effect) && e.lines === 2) { e.lines = 1; this._render(); return; }
+        break;
+      case "lines":
+        e.lines = el.value === "2" ? 2 : 1;
+        if (e.lines === 2 && !PAGED.includes(e.effect)) { e.effect = "fondu"; this._toast(this._t.lines_effect); this._render(); return; }
+        break;
+      case "speed": e.speed = el.value ? Number(el.value) : null; break;
+      case "passes": e.passes = el.value ? Number(el.value) : null; break;
+      case "font": e.font = el.value; break;
+      case "size": e.size = el.value ? Number(el.value) : 0; break;
+      case "every": e.every = Number(el.value) || 1; return;
       case "prio": e.prio = el.checked; break;
       case "room": s.room = el.checked; for (const ev of AX.EVENTS) this._axPreview(ev.key); return;
       case "quiet": s.quiet = el.checked; this._render(); return;
@@ -1309,9 +1345,7 @@ class OrbitDMDPanel extends HTMLElement {
 
   // donnees envoyees au panneau pour "Tester" (texte d'exemple)
   _axNotify(key, e, s, room) {
-    const data = { device_id: [s.device], icon: e.icon, message: AX.sampleText(key, e, s, this._t, room), color: e.color, effect: e.effect };
-    if (e.prio) { data.blink = true; data.passes = 2; }
-    return data;
+    return AX.notifyData(e, s.device, AX.sampleText(key, e, s, this._t, room));
   }
 
   async _axSendData(data) {
@@ -1351,12 +1385,18 @@ class OrbitDMDPanel extends HTMLElement {
     return this._axDevices.filter((d) => d.echo && !echos.includes(d.id) && !ignored.includes(d.id));
   }
 
+  // reglages d'affichage d'une alerte Alexa enregistree
+  _axEvent(m) {
+    return { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio, font: m.font || "", size: Number(m.size) || 0,
+      lines: Number(m.lines) === 2 ? 2 : 1, speed: m.speed ? Number(m.speed) : null, passes: m.passes ? Number(m.passes) : null };
+  }
+
   // une alerte Alexa dans la liste : apercu, quand, appareils ; "Modifier" ouvre le menu Alexa
   _alexaRow(s, cfg) {
     const t = this._t, m = cfg.variables.orbitdmd, k = m.event;
     const notify = (cfg.actions || []).find((a) => a && a.action === "orbitdmd.notify") || { data: {} };
     const set = { device: (notify.data.device_id || [])[0] || this._data.panels[0].device_id, room: !!m.room };
-    const e = { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio };
+    const e = this._axEvent(m);
     const dev = (this._axDevices || []).find((x) => (m.echos || []).includes(x.id));
     const room = dev ? dev.area || dev.name : "";
     const on = s.state === "on";
@@ -1578,7 +1618,7 @@ class OrbitDMDPanel extends HTMLElement {
         const m = this._configs[b.dataset.id].variables.orbitdmd;
         const n = (this._configs[b.dataset.id].actions || []).find((x) => x && x.action === "orbitdmd.notify") || { data: {} };
         const dev = (this._axDevices || []).find((x) => (m.echos || []).includes(x.id));
-        await this._axSendData(this._axNotify(m.event, { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio },
+        await this._axSendData(this._axNotify(m.event, this._axEvent(m),
           { device: (n.data.device_id || [])[0], room: !!m.room }, dev ? dev.area || dev.name : ""));
         break;
       }
