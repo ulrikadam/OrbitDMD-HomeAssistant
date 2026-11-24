@@ -43,6 +43,17 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
   Chaque alerte est une automatisation ordinaire de Home Assistant, rangée dans la catégorie « OrbitDMD ».
   Boutons Tester, Modifier, Dupliquer (pratique pour les paires allumé / éteint) et Supprimer ;
   bouton **Gérer le panneau** pour ouvrir sa page web.
+- **Menu Alexa** (avec l'intégration communautaire [Alexa Media Player](https://github.com/alandtse/alexa_media_player)) :
+  cochez vos appareils Alexa et ce qu'il faut afficher, les alertes sont créées toutes seules :
+  - les **minuteurs** (lancé, temps restant toutes les X minutes, terminé, annulé), les **rappels**, les
+    **alarmes** et la **musique** qui passe ;
+  - la **commande vocale** : chaque phrase dite à Alexa s'affiche comme des sous-titres, avec sa réponse si
+    vous voulez, sauf les phrases à ignorer (« stop », « chut »…) ;
+  - la **dictée** : « Alexa, affiche bonjour tout le monde » → « Bonjour tout le monde » sur le panneau.
+
+  Chaque événement a les mêmes réglages qu'une alerte (texte, couleur, effet, police, taille, lignes, icône,
+  aperçu, bouton Tester) et se replie pour garder le menu court. Avec le programme **1.8.0** du panneau, des
+  icônes dédiées (sablier, réveil, rappel, musique…) sont choisies ; avant, des icônes proches.
 - **Le panneau comme une lumière** : allumer, éteindre (la page web reste joignable), luminosité.
 - **Interrupteurs** : pause (image figée), luminosité heure par heure.
 - **Boutons** : afficher l'heure, afficher la météo, redémarrer.
@@ -62,6 +73,7 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
   ([dernière version](https://github.com/ulrikadam/OrbitDMD/releases/latest) ; à installer depuis la page web
   du panneau : Système → Nouveau programme).
 - Home Assistant **2025.1** ou plus récent (le logo de l'intégration s'affiche à partir de 2026.3).
+- Pour le menu Alexa : **Alexa Media Player**, installé avec HACS et relié à votre compte Amazon.
 
 ## Installation
 
@@ -93,6 +105,9 @@ de l'intégration MQTT.
 - La page OrbitDMD et le bouton « Gérer le panneau » ont besoin d'être sur le même réseau que le panneau.
 - Un nouveau panneau peut mettre jusqu'à 2 minutes à être découvert (il s'annonce toutes les 110 secondes environ).
 - Un modèle d'automatisation (blueprint) est aussi fourni : `blueprints/automation/orbitdmd/notification.yaml`.
+- Alexa : les informations passent par les serveurs d'Amazon. Une phrase arrive sur le panneau 2 à 10 secondes
+  après ; pour la dictée, Alexa répond parfois qu'elle ne comprend pas, c'est normal. Alexa Media Player n'est
+  pas officiel : un changement chez Amazon peut le bloquer quelques jours, le temps d'une mise à jour.
 
 Licence : MIT.
 
@@ -114,6 +129,14 @@ HUB75 panels). It talks directly to the panel's web page: **no MQTT, no YAML**.
   **priority alerts** (blinking text, shown even at night, repeated until the state goes back to normal).
   Each alert is a regular Home Assistant automation in the "OrbitDMD" category; Test, Edit, Duplicate and Delete
   buttons, plus **Manage the panel** to open its web page.
+- **Alexa menu** (with the community integration [Alexa Media Player](https://github.com/alandtse/alexa_media_player)):
+  tick your Alexa devices and what to show, and the alerts are created for you: **timers** (started, time left
+  every X minutes, done, cancelled), **reminders**, **alarms**, the **music** playing, **voice commands** (every
+  sentence said to Alexa as subtitles, optionally with her answer, except sentences you choose to skip) and
+  **dictation** ("Alexa, display hello everyone" → "Hello everyone" on the panel). Each event has the same
+  display settings as an alert and folds away to keep the menu short. With panel program **1.8.0**, dedicated
+  icons (hourglass, alarm clock, reminder, music…) are used; before that, similar icons. Sentences reach the
+  panel 2 to 10 seconds later, through Amazon's servers.
 - The panel as a **light** (on/off, brightness), pause and hourly-brightness **switches**, show time / show
   weather / restart **buttons**, **sensors** (current GIF, screen, CPU temperature, IP, version).
 - `orbitdmd.notify` **action**, "Show a notification" device action with the GIF list, and a notify entity.
@@ -121,7 +144,8 @@ HUB75 panels). It talks directly to the panel's web page: **no MQTT, no YAML**.
   (password and Wi-Fi name redacted).
 
 **Requirements**: OrbitDMD panel program **1.6.0 or later** (**1.7.0** for icon + text, two lines and the real
-font in the preview), Home Assistant **2025.1 or later** (logo from 2026.3).
+font in the preview), Home Assistant **2025.1 or later** (logo from 2026.3); for the Alexa menu, **Alexa Media
+Player** installed with HACS and linked to your Amazon account.
 
 **Install**: OrbitDMD is in the **default HACS store**: open HACS, search for **OrbitDMD** (or use the "Open in
 HACS" button above), download it and restart Home Assistant; the panel is then discovered automatically (or *Add
