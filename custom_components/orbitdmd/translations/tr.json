@@ -87,6 +87,16 @@
       "message": {
         "name": "Mesaj"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Canlı ekran"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Panel programı"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Panel reddetti: {error}"
+    },
+    "update_failed": {
+      "message": "Panel güncellenemedi: {error}"
     }
   }
 }

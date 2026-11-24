@@ -87,6 +87,16 @@
       "message": {
         "name": "Сообщение"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Экран в реальном времени"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Программа панели"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Панель отказала: {error}"
+    },
+    "update_failed": {
+      "message": "Не удалось обновить панель: {error}"
     }
   }
 }

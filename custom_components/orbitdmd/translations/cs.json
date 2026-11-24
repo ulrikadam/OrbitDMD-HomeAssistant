@@ -87,6 +87,16 @@
       "message": {
         "name": "Zpráva"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Obrazovka živě"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Program panelu"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Panel odmítl: {error}"
+    },
+    "update_failed": {
+      "message": "Aktualizace panelu se nezdařila: {error}"
     }
   }
 }

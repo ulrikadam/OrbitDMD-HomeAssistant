@@ -87,6 +87,16 @@
       "message": {
         "name": "Nachricht"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Live-Bildschirm"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Panel-Programm"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Das Panel hat abgelehnt: {error}"
+    },
+    "update_failed": {
+      "message": "Panel-Aktualisierung fehlgeschlagen: {error}"
     }
   }
 }

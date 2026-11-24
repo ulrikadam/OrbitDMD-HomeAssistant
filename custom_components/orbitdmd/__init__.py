@@ -24,7 +24,8 @@ from .const import (ATTR_BLINK, ATTR_COLOR, ATTR_ICON, ATTR_DEVICE, ATTR_EFFECT,
 from .coordinator import OrbitDMDCoordinator
 from .panel import async_setup_panel
 
-PLATFORMS = [Platform.BUTTON, Platform.LIGHT, Platform.NOTIFY, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [Platform.BUTTON, Platform.CAMERA, Platform.LIGHT, Platform.NOTIFY, Platform.SENSOR, Platform.SWITCH,
+             Platform.UPDATE]
 
 type OrbitDMDConfigEntry = ConfigEntry[OrbitDMDCoordinator]
 

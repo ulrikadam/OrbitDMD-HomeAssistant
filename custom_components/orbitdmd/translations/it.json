@@ -87,6 +87,16 @@
       "message": {
         "name": "Messaggio"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Schermo in diretta"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Programma del pannello"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Il pannello ha rifiutato: {error}"
+    },
+    "update_failed": {
+      "message": "Aggiornamento del pannello non riuscito: {error}"
     }
   }
 }

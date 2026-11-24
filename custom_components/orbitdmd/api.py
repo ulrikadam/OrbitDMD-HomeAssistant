@@ -108,6 +108,17 @@ class OrbitDMDApi:
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 raise OrbitDMDError(f"{name} : {err}") from err
 
+    async def screen(self) -> tuple[str, bytes]:
+        """Ce que montre le panneau : ("gif", b"SD:/gif/Categorie/nom.gif") pendant une GIF,
+        sinon (type d'ecran, image BMP de l'ecran) ; type : heure, meteo, message, pause, eteint..."""
+        async with self._gif_slots:
+            try:
+                async with self._session.get(self.base + "/api/ecran", timeout=TIMEOUT) as r:
+                    r.raise_for_status()
+                    return r.headers.get("X-Ecran", "autre"), await r.read()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                raise OrbitDMDError(f"/api/ecran : {err}") from err
+
     def gif_url(self, gif: str) -> str:
         cat, _, name = gif.partition("/")
         return f"{self.base}/gif/voir?c={cat}&f={name}"
@@ -137,3 +148,22 @@ class OrbitDMDApi:
 
     async def restart(self) -> str:
         return await self._post("/redemarrer")
+
+    async def install_program(self, kernel: bytes) -> str:
+        """Nouveau programme (kernel8.img) : le panneau l'ecrit a part (kernel8.new), garde l'ancien
+        (kernel8.bak), puis redemarre. L'envoi de quelques Mo par le Wi-Fi peut prendre une minute."""
+        form = aiohttp.FormData()
+        form.add_field("password", self._password, content_type="text/plain")
+        form.add_field("fichier", kernel, filename="kernel8.img", content_type="application/octet-stream")
+        async with self._lock:
+            try:
+                async with self._session.post(self.base + "/maj", data=form,
+                                              timeout=aiohttp.ClientTimeout(total=300)) as r:
+                    text = (await r.text()).strip()
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                raise OrbitDMDError(f"/maj : {err}") from err
+        if text.startswith("OK"):
+            return text
+        if "mot de passe" in text.lower():
+            raise OrbitDMDAuthError(text)
+        raise OrbitDMDError(text)

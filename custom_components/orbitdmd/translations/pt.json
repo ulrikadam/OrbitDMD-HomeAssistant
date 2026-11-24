@@ -87,6 +87,16 @@
       "message": {
         "name": "Mensagem"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Ecrã em direto"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Programa do painel"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "O painel recusou: {error}"
+    },
+    "update_failed": {
+      "message": "Não foi possível atualizar o painel: {error}"
     }
   }
 }

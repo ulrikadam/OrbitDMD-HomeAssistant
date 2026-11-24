@@ -87,6 +87,16 @@
       "message": {
         "name": "Mensaje"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Pantalla en directo"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Programa del panel"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "El panel lo rechazó: {error}"
+    },
+    "update_failed": {
+      "message": "No se pudo actualizar el panel: {error}"
     }
   }
 }

@@ -87,6 +87,16 @@
       "message": {
         "name": "Bericht"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Live scherm"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Programma van het paneel"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Het paneel weigerde: {error}"
+    },
+    "update_failed": {
+      "message": "Bijwerken van het paneel mislukt: {error}"
     }
   }
 }

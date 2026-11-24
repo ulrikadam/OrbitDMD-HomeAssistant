@@ -87,6 +87,16 @@
       "message": {
         "name": "Повідомлення"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Екран наживо"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Програма панелі"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Панель відмовила: {error}"
+    },
+    "update_failed": {
+      "message": "Не вдалося оновити панель: {error}"
     }
   }
 }

@@ -9,6 +9,12 @@
 const { pickLanguage } = await import(new URL(`./orbitdmd-i18n.js${new URL(import.meta.url).search}`, import.meta.url).href);
 // alertes Alexa (minuteurs, rappels, alarmes) : orbitdmd-alexa.js
 const AX = await import(new URL(`./orbitdmd-alexa.js${new URL(import.meta.url).search}`, import.meta.url).href);
+// idees d'alertes toutes pretes, d'apres les appareils : orbitdmd-idees.js
+// (fichier absent tant que Home Assistant n'a pas redemarre apres une mise a jour : la page marche sans)
+let ID = null;
+try {
+  ID = await import(new URL(`./orbitdmd-idees.js${new URL(import.meta.url).search}`, import.meta.url).href);
+} catch (err) { console.warn("OrbitDMD : idees d'alertes indisponibles (redemarrez Home Assistant)", err); }
 
 const EFFECTS = ["defile", "inverse", "monte", "descend", "lettres", "pluie", "fondu"];
 const PAGED = ["monte", "descend", "lettres", "pluie", "fondu"];   // texte en pages (les autres defilent)
@@ -49,6 +55,9 @@ const FOR_MINUTES = [0, 1, 2, 5, 10, 15, 30, 60];          // "pendant au moins"
 const SUN_OFFSETS = [-120, -60, -30, -15, 0, 15, 30, 60, 120];   // minutes avant (-) ou apres (+)
 const CAL_OFFSETS = [0, 5, 15, 30, 60, 120, 180, 720, 1440];           // minutes avant l'evenement
 const ENTITY_TRIGS = ["entity", "value"];
+// declencheur "musique" : titre et artiste du lecteur qui a declenche l'alerte
+const MUSIC_TITLE = "{{ trigger.to_state.attributes.media_title }}";
+const MUSIC_ARTIST = "{{ trigger.to_state.attributes.media_artist }}";
 // "a intervalle regulier" : en minutes (moins de 60 : X fois par heure ; sinon toutes les X heures)
 const PERIODS = [10, 15, 20, 30, 60, 120, 180, 240, 360, 720];                    // declencheurs bases sur des entites
 // minutes -> "01:30:00" (ou "-00:30:00") pour Home Assistant, et retour
@@ -270,6 +279,15 @@ img.gif:not([src]) { visibility:hidden; }
 .axrow { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
 .axpv { width:320px; max-width:100%; flex:none; }
 .axnew { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+/* idees d'alertes */
+.rcs { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.rc { display:grid; grid-template-columns:220px 1fr; gap:14px; align-items:start; }
+.rc.off { opacity:.6; }
+.rc .info { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.rc .info > span { color:var(--secondary-text-color); font-size:14px; }
+.rcents { display:flex; flex-wrap:wrap; gap:6px 14px; }
+.rcent { display:flex; align-items:center; gap:6px; font-size:14px; }
+@media (max-width:600px) { .rc { grid-template-columns:1fr; } }
 /* menu Alexa : evenements et appareils repliables */
 .axhead { display:flex; align-items:center; gap:12px; }
 .axhead > .grow { display:flex; flex-direction:column; gap:4px; min-width:0; }
@@ -470,7 +488,8 @@ class OrbitDMDPanel extends HTMLElement {
       title="${esc(p.url)}">⚙ ${esc(panels.length > 1 ? fmt(t.admin_n, p.title) : t.admin)}</a>`).join("");
     this._renderBanner();
     if (!this._data.panels.length) { main.innerHTML = `<div class="card">${esc(t.no_panel)}</div>`; return; }
-    main.innerHTML = this._view === "home" ? this._home() : this._view === "alexa" ? this._alexaView() : this._wizard();
+    main.innerHTML = this._view === "home" ? this._home() : this._view === "alexa" ? this._alexaView()
+      : this._view === "ideas" ? this._ideasView() : this._wizard();
     if (this._view === 1) this._renderGrid();
     if (this._view === 2) this._renderEntities();
     this._observe();
@@ -491,6 +510,13 @@ class OrbitDMDPanel extends HTMLElement {
   _name(entityId) {
     const s = this._hass.states[entityId];
     return (s && s.attributes.friendly_name) || entityId || "";
+  }
+
+  // nom de l'appareil d'une entite (registres de Home Assistant), sinon le nom de l'entite
+  _deviceName(entityId) {
+    const ent = this._hass.entities && this._hass.entities[entityId];
+    const dev = ent && ent.device_id && this._hass.devices && this._hass.devices[ent.device_id];
+    return (dev && (dev.name_by_user || dev.name)) || this._name(entityId);
   }
 
   _state(entityId, value) {
@@ -549,6 +575,7 @@ class OrbitDMDPanel extends HTMLElement {
         + (d.calOffset ? fmt(t.cal_before_suffix, this._dur(d.calOffset)) : "");
     }
     const n = this._names(d);
+    if (d.trig === "music") return fmt(t.when_music, n);
     if (d.trig === "value") {
       return fmt(d.cmp === "above" ? t.when_above : t.when_below, n, `${d.threshold} ${this._unit(d)}`.trim()) + forText;
     }
@@ -565,6 +592,7 @@ class OrbitDMDPanel extends HTMLElement {
   _autoName(d) {
     const what = gifLabel(d.icon && d.mode === "icon" ? d.icon : d.gif) || d.message || "OrbitDMD";
     if (d.trig === "sun" || d.trig === "calendar" || d.trig === "periodic") return `${what} – ${this._whenText(d)}`;
+    if (d.trig === "music") return `${d.entities.map((e) => this._name(e)).join(" / ")} – ${this._t.trig_music}`;
     if (d.trig === "value") {
       return `${d.entities.map((e) => this._name(e)).join(" / ")} – ${d.cmp === "above" ? ">" : "<"} ${d.threshold} ${this._unit(d)}`.trim();
     }
@@ -615,7 +643,8 @@ class OrbitDMDPanel extends HTMLElement {
     return `<h2>${t.home_title}</h2><p class="help">${t.home_intro}</p>
       ${this._axNew().length ? `<div class="banner axnew">${esc(fmt(t.ax_new_device, this._axNew().map((d) => d.name).join(", ")))}
         <button data-a="axadd">${t.ax_add}</button> <button data-a="axignore">${t.ax_ignore}</button></div>` : ""}
-      <div class="bar"><button class="primary" data-a="new">+ ${t.new}</button><button data-a="alexa">${t.ax_menu}</button></div>
+      <div class="bar"><button class="primary" data-a="new">+ ${t.new}</button>${ID ? `<button data-a="ideas">💡 ${t.rc_menu}</button>` : ""}
+        <button data-a="alexa">${t.ax_menu}</button></div>
       <div class="alerts">${rows || `<div class="card muted">${t.none}</div>`}</div>`;
   }
 
@@ -672,9 +701,11 @@ class OrbitDMDPanel extends HTMLElement {
   _step2() {
     const t = this._t, d = this._draft;
     d.entities = d.entities.filter((e) => this._hass.states[e]);
-    const kinds = [["entity", t.trig_entity], ["value", t.trig_value], ["time", t.trig_time], ["periodic", t.trig_periodic], ["sun", t.trig_sun], ["calendar", t.trig_calendar]]
+    const kinds = [["entity", t.trig_entity], ["value", t.trig_value], ["time", t.trig_time], ["periodic", t.trig_periodic], ["sun", t.trig_sun],
+      ["calendar", t.trig_calendar], ["music", t.trig_music]]
       .map(([k, label]) => `<button class="chip ${d.trig === k ? "on" : ""}" data-a="trig" data-v="${k}">${label}</button>`).join("");
-    const help = { entity: t.s2_help, value: t.value_help, time: t.time_help, periodic: t.per_help, sun: t.sun_help, calendar: t.cal_help }[d.trig];
+    const help = { entity: t.s2_help, value: t.value_help, time: t.time_help, periodic: t.per_help, sun: t.sun_help, calendar: t.cal_help,
+      music: t.music_help }[d.trig];
     const head = `<h2>2. ${t.s2}</h2><div class="chips">${kinds}</div><p class="help">${help}</p>`;
     if (d.trig === "time") return head + this._timePicker();
     if (d.trig === "sun") return head + this._sunPicker();
@@ -688,6 +719,8 @@ class OrbitDMDPanel extends HTMLElement {
       <small>${esc(e)} · ${esc(fmt(t.now, this._state(e, this._hass.states[e].state)))}</small></div>
       <button data-a="unentity" data-e="${esc(e)}">${t.remove}</button></div>`).join("");
     const add = this._adding ? search : `<button class="link" data-a="addentity">${t.add_entity}</button>`;
+    // musique : seulement les lecteurs choisis (un nouveau titre suffit, pas d'etat a choisir)
+    if (d.trig === "music") return `${head}<div class="sels">${sels}</div>${add}`;
     // "pendant au moins X minutes" : l'etat (ou la valeur) doit durer avant que l'alerte parte
     const forSel = `<div class="opt"><span class="lead">${t.for_label}</span><select id="formin">${FOR_MINUTES.map((m) =>
       `<option value="${m}" ${d.forMin === m ? "selected" : ""}>${m ? this._dur(m) : t.for_now}</option>`).join("")}</select></div>`;
@@ -782,7 +815,7 @@ class OrbitDMDPanel extends HTMLElement {
   // ce qui manque a l'etape 2 (texte du message d'erreur), ou ""
   _step2Missing(d) {
     const t = this._t;
-    if (ENTITY_TRIGS.includes(d.trig) && !d.entities.length) return t.need_entity;
+    if ((ENTITY_TRIGS.includes(d.trig) || d.trig === "music") && !d.entities.length) return t.need_entity;
     if (d.trig === "value" && (d.threshold === "" || isNaN(Number(d.threshold)))) return t.need_threshold;
     if (d.trig === "time" && !d.days.length) return t.need_day;
     if (d.trig === "calendar" && !d.calendar) return t.need_calendar;
@@ -795,7 +828,9 @@ class OrbitDMDPanel extends HTMLElement {
     const q = fold(this._eq.trim());
     let list = Object.values(this._hass.states).filter((s) => !s.entity_id.startsWith("automation.")
       && !s.entity_id.startsWith("update.") && !d.entities.includes(s.entity_id));
+    if (d.trig === "music") list = list.filter((s) => s.entity_id.startsWith("media_player."));
     if (q) list = list.filter((s) => fold(s.attributes.friendly_name).includes(q) || fold(s.entity_id).includes(q));
+    else if (d.trig === "music") { /* deja limite aux lecteurs */ }
     else if (d.trig === "value" || d.trig === "periodic") list = list.filter((s) => s.attributes.unit_of_measurement && !isNaN(parseFloat(s.state)));
     else list = list.filter((s) => SUGGESTED.includes(s.entity_id.split(".")[0]));
     list = list.sort((a, b) => fold(a.attributes.friendly_name || a.entity_id).localeCompare(fold(b.attributes.friendly_name || b.entity_id))).slice(0, 60);
@@ -818,6 +853,7 @@ class OrbitDMDPanel extends HTMLElement {
     const num = (sel, max) => `<option value="">${t.dflt}</option>` + Array.from({ length: max }, (_, i) => `<option ${sel === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("");
     const withEntities = ENTITY_TRIGS.includes(d.trig);
     const inserts = d.trig === "calendar" ? `<button data-a="insert" data-k="event">${t.insert_event}</button>`
+      : d.trig === "music" ? `<button data-a="insert" data-k="title">${t.insert_title}</button><button data-a="insert" data-k="artist">${t.insert_artist}</button>`
       : d.trig === "periodic" ? d.entities.map((e) => `<button data-a="insert" data-k="fixed" data-e="${esc(e)}">${esc(fmt(t.insert, this._name(e)))}</button>`).join("")
       : !withEntities ? ""
       : d.entities.length === 1
@@ -850,6 +886,12 @@ class OrbitDMDPanel extends HTMLElement {
     return msg.replace(/\{\{(.*?)\}\}/g, (m, inner) => {
       const fixed = inner.match(/states\(\s*'([^']+)'/);
       if (fixed) return this._value(fixed[1]);
+      // musique : le titre et l'artiste en cours, sinon des exemples
+      const so = first && this._hass.states[first];
+      if (/media_title/.test(inner)) return (so && so.attributes.media_title) || this._t.ax_sample_title;
+      if (/media_artist/.test(inner)) return (so && so.attributes.media_artist) || this._t.ax_sample_artist;
+      // nom de l'appareil (recettes : "Fenetre salon" plutot que "Fenetre salon Contact")
+      if (/device_attr/.test(inner)) return this._deviceName(first);
       if (/to_state\.name/.test(inner)) return this._name(first);
       if (/trigger\.entity_id/.test(inner)) return this._value(first);
       if (/calendar_event/.test(inner)) return d.calWord.trim() || this._t.sample_event;
@@ -859,12 +901,12 @@ class OrbitDMDPanel extends HTMLElement {
 
   // icone liee a une GIF : meme nom dans la categorie Icones (Domotique/porte_ouverte.gif ->
   // Icones/porte_ouverte.gif) ; une GIF choisie dans Icones est sa propre icone
-  _iconFor(gif) {
+  _iconFor(gif, device = this._draft && this._draft.device) {
     if (!gif) return "";
     const parts = gif.split("/");
     if (parts[0] === ICON_CATEGORY) return gif;
     const icon = `${ICON_CATEGORY}/${parts.slice(1).join("/")}`;
-    return this._panelOf(this._draft.device).gifs.includes(icon) ? icon : "";
+    return this._panelOf(device).gifs.includes(icon) ? icon : "";
   }
 
   _icons() {
@@ -1201,6 +1243,84 @@ class OrbitDMDPanel extends HTMLElement {
 
   // ---------- donnees ----------
 
+  // ---------- idees d'alertes ----------
+
+  // entites cochees d'une idee (toutes, la premiere fois)
+  _ideaSel(idea) {
+    this._rcSel = this._rcSel || {};
+    if (!this._rcSel[idea.key]) this._rcSel[idea.key] = new Set(idea.entities);
+    return this._rcSel[idea.key];
+  }
+
+  // brouillons d'alerte d'une idee, avec les entites cochees
+  _ideaDrafts(idea) {
+    const chosen = idea.entities.filter((e) => this._ideaSel(idea).has(e));
+    if (!chosen.length) return [];
+    const parts = idea.drafts(chosen);
+    return parts.map((p) => {
+      const d = Object.assign(this._newDraft(), { gif: idea.gif, mode: idea.useIcon ? "icon" : "gif", recipe: idea.recipe }, p);
+      d.icon = (p.gif ? this._iconFor(p.gif, d.device) : "") || idea.icon || this._iconFor(d.gif, d.device);
+      if (!this._panelOf(d.device).gifs.includes(d.icon)) d.icon = "";
+      if (d.mode === "icon" && !d.icon) d.mode = "gif";            // pas d'icone sur ce panneau : la GIF complete
+      if (!d.gif && !d.message) d.message = idea.title;           // ni GIF ni icone : le titre en texte
+      d.name = parts.length > 1 ? `${idea.title} – ${this._state(d.entities[0], d.to)}` : idea.title;
+      d.autoName = d.name;
+      return d;
+    });
+  }
+
+  // idee deja ajoutee : une alerte de la page porte son nom de recette (et, pour un appareil, son entite)
+  _ideaDone(idea) {
+    return Object.values(this._configs).some((cfg) => {
+      const m = cfg && cfg.variables && cfg.variables.orbitdmd;
+      if (!m || m.recipe !== idea.recipe) return false;
+      return idea.recipe !== "appliance" || JSON.stringify(cfg.triggers || []).includes(idea.entities[0]);
+    });
+  }
+
+  _ideasView() {
+    const t = this._t, panel = this._panelOf(this._data.panels[0].device_id);
+    this._ideas = ID.findIdeas(this._hass, { t, gifs: panel.gifs, valueTpl: (x) => this._valueTemplate(x) });
+    const back = `<div class="nav"><button data-a="axback">${t.back}</button></div>`;
+    if (!this._ideas.length) return `<h2>${t.rc_title}</h2><div class="card muted">${esc(t.rc_none)}</div>${back}`;
+    const cards = this._ideas.map((idea) => {
+      const sel = this._ideaSel(idea), drafts = this._ideaDrafts(idea), d0 = drafts[0], k = esc(idea.key);
+      const preview = !d0 ? `<div class="screen"></div>`
+        : d0.mode === "icon" || !d0.gif ? `<div class="screen">${this._marquee(d0)}</div>` : this._screen(d0.device, d0.gif, "screen");
+      const when = drafts.map((d) => `<span>${esc(this._whenText(d))}${d.priority ? ` · <b>${t.b_prio}</b>` : ""}</span>`).join("");
+      const ents = idea.entities.map((e) => `<label class="rcent"><input type="checkbox" data-a="rcent" data-k="${k}" data-e="${esc(e)}"
+        ${sel.has(e) ? "checked" : ""}>${esc(this._deviceName(e))}</label>`).join("");
+      const done = this._ideaDone(idea);
+      return `<div class="card rc ${drafts.length ? "" : "off"}">
+        ${preview}
+        <div class="info"><b>${esc(idea.title)}</b>${done ? ` <span class="badge">✓ ${t.rc_added}</span>` : ""}
+          ${when}
+          <div class="rcents">${ents}</div>
+          <div class="row">
+            <button class="primary" data-a="rcadd" data-k="${k}" ${drafts.length ? "" : "disabled"}>${done ? t.rc_again : t.rc_add}${drafts.length > 1 ? ` (${drafts.length})` : ""}</button>
+            ${drafts.length === 1 ? `<button data-a="rccustom" data-k="${k}">${t.rc_custom}</button>` : ""}
+            <button data-a="rctest" data-k="${k}" ${drafts.length ? "" : "disabled"}>▶ ${t.test}</button>
+          </div></div></div>`;
+    }).join("");
+    return `<h2>${t.rc_title}</h2><p class="help">${esc(t.rc_help)}</p><div class="rcs">${cards}</div>${back}`;
+  }
+
+  // ajoute les alertes d'une idee, tout de suite (elles se modifient ensuite comme les autres)
+  async _ideaAdd(idea) {
+    const t = this._t, drafts = this._ideaDrafts(idea);
+    try {
+      for (const [i, d] of drafts.entries()) {
+        d.id = `orbitdmd_${Date.now()}_${i}`;
+        const cfg = this._config(d);
+        await this._hass.callApi("POST", `config/automation/config/${d.id}`, cfg);
+        this._configs[d.id] = cfg;
+        this._categorizeId(d.id);
+      }
+      this._toast(drafts.length > 1 ? fmt(t.rc_saved_n, drafts.length) : t.rc_saved);
+      this._render();
+    } catch (err) { this._toast(fmt(t.error, err.message || err.body?.message || err)); }
+  }
+
   // ---------- menu Alexa ----------
 
   // icones de notification du panneau choisi
@@ -1461,7 +1581,7 @@ class OrbitDMDPanel extends HTMLElement {
       quiet: false, quietFrom: "23:00", quietTo: "07:00", cooldown: 0, priority: false, repeat: 0, icon: "", mode: "gif",
       trig: "entity", perEvery: 60, time: "19:00", days: [], every: 1, parity: isoWeek(new Date()) % 2,
       forMin: 0, cmp: "below", threshold: "", sunEvent: "sunset", sunOffset: 0,
-      calendar: "", calEvent: "start", calOffset: 0, calWord: "" };
+      calendar: "", calEvent: "start", calOffset: 0, calWord: "", recipe: "" };
   }
 
   _findNotify(list) {
@@ -1503,6 +1623,7 @@ class OrbitDMDPanel extends HTMLElement {
       perEvery: PERIODS.includes(Number(meta.per_every)) ? Number(meta.per_every) : 60,
       time: hhmm(meta.time || tr.at, "19:00"), days: Array.isArray(meta.days) ? meta.days : [],
       every: Number(meta.every) === 2 ? 2 : 1, parity: Number(meta.parity) === 1 ? 1 : 0,
+      recipe: meta.recipe || "",
     };
     o.autoName = this._autoName(o);     // un nom propose garde le suivi si l'etat change
     return o;
@@ -1546,6 +1667,11 @@ class OrbitDMDPanel extends HTMLElement {
       // seulement les evenements dont le titre contient le mot (sans tenir compte des majuscules)
       const word = d.calWord.trim().toLowerCase().replace(/['"\\{}%]/g, "");
       if (word) when.push({ condition: "template", value_template: `{{ '${word}' in (trigger.calendar_event.summary or '') | lower }}` });
+    } else if (d.trig === "music") {
+      // un nouveau titre sur un lecteur qui joue (pas a l'arret, pas le meme titre)
+      trigger = { trigger: "state", entity_id: d.entities.length === 1 ? d.entities[0] : d.entities.slice(), attribute: "media_title" };
+      when.push({ condition: "template", value_template: "{{ trigger.to_state.state == 'playing' and trigger.to_state.attributes.get('media_title')"
+        + " and trigger.to_state.attributes.get('media_title') != (trigger.from_state.attributes.get('media_title') if trigger.from_state else '') }}" });
     } else if (d.trig === "value") {
       trigger = { trigger: "numeric_state", entity_id: d.entities.length === 1 ? d.entities[0] : d.entities.slice(),
         [d.cmp === "above" ? "above" : "below"]: Number(d.threshold) };
@@ -1580,7 +1706,7 @@ class OrbitDMDPanel extends HTMLElement {
         calendar: d.calendar, cal_event: d.calEvent, cal_offset: d.calOffset, cal_word: d.calWord,
         per_every: d.perEvery, entities: d.trig === "periodic" ? d.entities.slice() : undefined,
         display: d.mode, gif: d.gif, quiet: d.quiet, quiet_from: d.quietFrom, quiet_to: d.quietTo,
-        cooldown: d.cooldown, priority: d.priority, repeat: d.repeat } },
+        cooldown: d.cooldown, priority: d.priority, repeat: d.repeat, ...(d.recipe ? { recipe: d.recipe } : {}) } },
       triggers: [trigger], conditions, actions,
     };
     if (repeat || cooldown) { cfg.mode = "single"; cfg.max_exceeded = "silent"; }
@@ -1590,12 +1716,14 @@ class OrbitDMDPanel extends HTMLElement {
 
   async _send(d) {
     const data = this._notifyData(d);
-    const first = ENTITY_TRIGS.includes(d.trig) ? d.entities[0] : null;
+    const first = ENTITY_TRIGS.includes(d.trig) || d.trig === "music" ? d.entities[0] : null;
     const so = first && this._hass.states[first];
     try {
       // execute_script calcule les modeles {{ ... }} comme le ferait l'automatisation ;
-      // "trigger" est imite avec la premiere entite
-      const variables = so ? { trigger: { entity_id: first, to_state: { name: this._name(first), state: so.state } } }
+      // "trigger" est imite avec la premiere entite (musique : titre en cours, sinon un exemple)
+      const attributes = so ? { media_title: so.attributes.media_title || this._t.ax_sample_title,
+        media_artist: so.attributes.media_artist || this._t.ax_sample_artist } : {};
+      const variables = so ? { trigger: { entity_id: first, to_state: { name: this._name(first), state: so.state, attributes } } }
         : d.trig === "calendar" ? { trigger: { calendar_event: { summary: d.calWord.trim() || this._t.sample_event } } } : {};
       await this._hass.callWS({ type: "execute_script", sequence: [{ action: "orbitdmd.notify", data }], variables });
       this._toast(this._t.sent);
@@ -1635,6 +1763,23 @@ class OrbitDMDPanel extends HTMLElement {
     switch (a) {
       case "new": this._openDraft(this._newDraft(), 1); break;
       case "alexa": await this._openAlexa(); break;
+      case "ideas": this._go("ideas"); break;
+      case "rcent": {
+        const idea = (this._ideas || []).find((x) => x.key === b.dataset.k);
+        if (!idea) break;
+        const sel = this._ideaSel(idea);
+        if (b.checked) sel.add(b.dataset.e); else sel.delete(b.dataset.e);
+        this._render(); break;
+      }
+      case "rcadd": case "rccustom": case "rctest": {
+        const idea = (this._ideas || []).find((x) => x.key === b.dataset.k);
+        const drafts = idea ? this._ideaDrafts(idea) : [];
+        if (!drafts.length) break;
+        if (a === "rcadd") await this._ideaAdd(idea);
+        else if (a === "rctest") await this._send(drafts[0]);
+        else this._openDraft(drafts[0], 3);          // personnaliser : l'assistant, a l'etape du texte
+        break;
+      }
       case "axback": this._go("home"); break;
       case "axsave": await this._axSave(); break;
       case "axfold": {
@@ -1695,7 +1840,14 @@ class OrbitDMDPanel extends HTMLElement {
       }
         this.shadowRoot.querySelectorAll(".tile").forEach((x) => x.classList.toggle("on", x.dataset.gif === d.gif));
         break;
-      case "trig": d.trig = b.dataset.v; this._render(); break;
+      case "trig":
+        d.trig = b.dataset.v;
+        // musique : seulement des lecteurs ; texte propose « Titre - Artiste »
+        if (d.trig === "music") {
+          d.entities = d.entities.filter((e) => e.startsWith("media_player."));
+          if (!d.message) d.message = `${MUSIC_TITLE} - ${MUSIC_ARTIST}`;
+        }
+        this._render(); break;
       case "cmp": d.cmp = b.dataset.v; this._render(); break;
       case "sunev": d.sunEvent = b.dataset.v; this._render(); break;
       case "calev": d.calEvent = b.dataset.v; this._render(); break;
@@ -1730,6 +1882,7 @@ class OrbitDMDPanel extends HTMLElement {
       case "insert": {
         const k = b.dataset.k;
         const tpl = k === "event" ? "{{ trigger.calendar_event.summary }}"
+          : k === "title" ? MUSIC_TITLE : k === "artist" ? MUSIC_ARTIST
           : k === "name" ? "{{ trigger.to_state.name }}"
           : k === "value" ? this._valueTemplate("trigger.entity_id")
           : k === "fixed" ? this._valueTemplate(`'${b.dataset.e}'`) : this._valueTemplate(`'${d.entities[0]}'`);

@@ -87,6 +87,16 @@
       "message": {
         "name": "Message"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Live screen"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Panel program"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "The panel refused: {error}"
+    },
+    "update_failed": {
+      "message": "Panel update failed: {error}"
     }
   }
 }

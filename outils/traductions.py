@@ -308,7 +308,24 @@ LINES = {
 }
 
 
-def build(t: dict, e: tuple, icon: tuple, lines: tuple) -> dict:
+# ajoutes en 1.3.0 : camera "Ecran en direct", mise a jour "Programme du panneau"
+NEW = {
+ "fr": dict(live="Écran en direct", program="Programme du panneau", update_failed="Mise à jour du panneau impossible : {error}"),
+ "en": dict(live="Live screen", program="Panel program", update_failed="Panel update failed: {error}"),
+ "nl": dict(live="Live scherm", program="Programma van het paneel", update_failed="Bijwerken van het paneel mislukt: {error}"),
+ "es": dict(live="Pantalla en directo", program="Programa del panel", update_failed="No se pudo actualizar el panel: {error}"),
+ "ru": dict(live="Экран в реальном времени", program="Программа панели", update_failed="Не удалось обновить панель: {error}"),
+ "de": dict(live="Live-Bildschirm", program="Panel-Programm", update_failed="Panel-Aktualisierung fehlgeschlagen: {error}"),
+ "it": dict(live="Schermo in diretta", program="Programma del pannello", update_failed="Aggiornamento del pannello non riuscito: {error}"),
+ "pt": dict(live="Ecrã em direto", program="Programa do painel", update_failed="Não foi possível atualizar o painel: {error}"),
+ "pl": dict(live="Ekran na żywo", program="Program panelu", update_failed="Nie udało się zaktualizować panelu: {error}"),
+ "uk": dict(live="Екран наживо", program="Програма панелі", update_failed="Не вдалося оновити панель: {error}"),
+ "tr": dict(live="Canlı ekran", program="Panel programı", update_failed="Panel güncellenemedi: {error}"),
+ "cs": dict(live="Obrazovka živě", program="Program panelu", update_failed="Aktualizace panelu se nezdařila: {error}"),
+}
+
+
+def build(t: dict, e: tuple, icon: tuple, lines: tuple, new: dict) -> dict:
     fields = dict(zip(FIELDS, t["fields"]))
     fields["icon"] = icon
     fields["lines"] = lines
@@ -330,6 +347,8 @@ def build(t: dict, e: tuple, icon: tuple, lines: tuple) -> dict:
             "sensor": {"gif": {"name": t["gif"]}, "screen": {"name": t["screen"], "state": dict(zip(SCREENS, t["screens"]))},
                        "temperature": {"name": t["temp"]}, "ip": {"name": t["ip"]}, "version": {"name": t["version"]}},
             "notify": {"message": {"name": t["message"]}},
+            "camera": {"live": {"name": new["live"]}},
+            "update": {"program": {"name": new["program"]}},
         },
         "services": {"notify": {"name": t["svc"], "description": t["svc_desc"],
                                 "fields": {k: {"name": v[0], "description": v[1]} for k, v in fields.items()}}},
@@ -338,7 +357,8 @@ def build(t: dict, e: tuple, icon: tuple, lines: tuple) -> dict:
                               "extra_fields": {k: fields[k][0] for k in ("message", "gif", "effect", "color", "speed", "passes", "blink", "icon")}},
         "issues": {"panel_too_old": {"title": e[0], "description": e[1]}},
         "exceptions": {"panel_too_old": {"message": e[2]}, "no_panel": {"message": e[3]},
-                       "need_content": {"message": e[4]}, "panel_error": {"message": e[5]}},
+                       "need_content": {"message": e[4]}, "panel_error": {"message": e[5]},
+                       "update_failed": {"message": new["update_failed"]}},
     }
 
 
@@ -352,7 +372,7 @@ def main() -> None:
         need = ("{name}", "{version}", "{minimum}")
         assert "{name}" in e[0] and all(k in e[1] for k in need) and all(k in e[2] for k in need), lang
         assert "{error}" in e[5], lang
-        text = json.dumps(build(t, e, ICON[lang], LINES[lang]), ensure_ascii=False, indent=2) + "\n"
+        text = json.dumps(build(t, e, ICON[lang], LINES[lang], NEW[lang]), ensure_ascii=False, indent=2) + "\n"
         with open(os.path.join(D, "translations", f"{lang}.json"), "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
         if lang == "en":

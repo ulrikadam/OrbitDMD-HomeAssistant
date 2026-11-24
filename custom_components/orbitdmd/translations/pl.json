@@ -87,6 +87,16 @@
       "message": {
         "name": "Wiadomość"
       }
+    },
+    "camera": {
+      "live": {
+        "name": "Ekran na żywo"
+      }
+    },
+    "update": {
+      "program": {
+        "name": "Program panelu"
+      }
     }
   },
   "services": {
@@ -206,6 +216,9 @@
     },
     "panel_error": {
       "message": "Panel odmówił: {error}"
+    },
+    "update_failed": {
+      "message": "Nie udało się zaktualizować panelu: {error}"
     }
   }
 }

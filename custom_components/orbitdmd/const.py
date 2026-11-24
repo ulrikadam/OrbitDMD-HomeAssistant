@@ -1,4 +1,5 @@
 """Constantes de l'integration OrbitDMD."""
+import re
 from datetime import timedelta
 
 DOMAIN = "orbitdmd"
@@ -40,11 +41,14 @@ ICON_CATEGORY = "Icones"          # petites GIF a gauche du texte ("icone", pann
 
 
 def version_tuple(version: str | None) -> tuple[int, ...]:
-    """"1.6.0" -> (1, 6, 0) ; inconnu -> (0,)"""
-    try:
-        return tuple(int(x) for x in str(version).split(".")[:3])
-    except (TypeError, ValueError):
-        return (0,)
+    """"1.6.0" -> (1, 6, 0) ; "1.8.0-test1" -> (1, 8, 0) ; inconnu -> (0,)"""
+    parts = []
+    for x in str(version or "").lstrip("vV").split(".")[:3]:
+        digits = re.match(r"\d+", x)
+        if not digits:
+            break
+        parts.append(int(digits.group()))
+    return tuple(parts) or (0,)
 
 
 def panel_too_old(version: str | None) -> bool:

@@ -40,9 +40,22 @@ Intégration Home Assistant pour les panneaux LED [OrbitDMD](https://github.com/
   4. **options** : heures de silence, pas plus d'une fois toutes les X minutes, **alerte prioritaire**
      (texte clignotant, affichée même la nuit, répétée tant que l'état ne revient pas à la normale).
 
+  Déclencheur **musique** : « quand un nouveau titre passe » sur un ou plusieurs lecteurs (Sonos, Spotify,
+  Apple TV…), avec les boutons « + Titre » et « + Artiste » pour le texte.
+
   Chaque alerte est une automatisation ordinaire de Home Assistant, rangée dans la catégorie « OrbitDMD ».
   Boutons Tester, Modifier, Dupliquer (pratique pour les paires allumé / éteint) et Supprimer ;
   bouton **Gérer le panneau** pour ouvrir sa page web.
+- **💡 Idées d'alertes** : la page regarde vos appareils et propose des alertes toutes prêtes, avec la bonne GIF :
+  sonnette, fumée, gaz, monoxyde de carbone, fuite d'eau, porte ou fenêtre restée ouverte, garage, alarme
+  (déclenchée, armée, désarmée), retour à la maison, personne vue par une caméra, piles faibles, musique,
+  lave-linge ou lave-vaisselle terminé. Un clic sur « Ajouter » et l'alerte est créée ; « Personnaliser » ouvre
+  l'assistant pour la régler d'abord.
+- **Écran en direct** : une entité caméra montre ce que le panneau affiche (la GIF animée, ou l'heure, la météo,
+  le message…), agrandi avec l'aspect des LED, dans vos tableaux de bord et l'application.
+- **Mise à jour du panneau** : « Programme du panneau » apparaît dans *Paramètres → Mises à jour* quand une
+  nouvelle version d'OrbitDMD est publiée ; « Installer » l'envoie au panneau, qui garde l'ancien programme en
+  secours.
 - **Menu Alexa** (avec l'intégration communautaire [Alexa Media Player](https://github.com/alandtse/alexa_media_player)) :
   cochez vos appareils Alexa et ce qu'il faut afficher, les alertes sont créées toutes seules :
   - les **minuteurs** (lancé, temps restant toutes les X minutes, terminé, annulé), les **rappels**, les
@@ -127,8 +140,15 @@ HUB75 panels). It talks directly to the panel's web page: **no MQTT, no YAML**.
   (the full GIF then the text, or **the GIF's icon on the left with the text beside it**), with an **animated
   preview** that matches the panel and "Test on the panel"; then options: quiet hours, cooldown and
   **priority alerts** (blinking text, shown even at night, repeated until the state goes back to normal).
+  A **music** trigger fires on every new track played on the chosen players (Sonos, Spotify, Apple TV…).
   Each alert is a regular Home Assistant automation in the "OrbitDMD" category; Test, Edit, Duplicate and Delete
   buttons, plus **Manage the panel** to open its web page.
+- **💡 Alert ideas**: the page looks at your devices and suggests ready-made alerts with the right GIF (doorbell,
+  smoke, gas, CO, water leak, door or window left open, garage, alarm, coming home, person seen by a camera, low
+  batteries, music, appliance finished): one click on "Add" creates it.
+- **Live screen**: a camera entity shows what the panel displays, enlarged with an LED look, in your dashboards.
+- **Panel update**: "Panel program" shows up in *Settings → Updates* when a new OrbitDMD version is published;
+  "Install" sends it to the panel, which keeps the previous program as a backup.
 - **Alexa menu** (with the community integration [Alexa Media Player](https://github.com/alandtse/alexa_media_player)):
   tick your Alexa devices and what to show, and the alerts are created for you: **timers** (started, time left
   every X minutes, done, cancelled), **reminders**, **alarms**, the **music** playing, **voice commands** (every
