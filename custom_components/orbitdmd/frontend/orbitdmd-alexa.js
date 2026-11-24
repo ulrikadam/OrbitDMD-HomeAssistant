@@ -4,17 +4,35 @@
 // qui couvre tous les appareils coches ; ses reglages sont gardes dans variables.orbitdmd.
 
 // evenements, dans l'ordre du menu ; "on" : actif la premiere fois
+// "icons" : icones par ordre de preference ; la premiere presente sur le panneau est prise
+// (les icones Alexa arrivent avec le panneau 1.8.0 ; avant, des icones de remplacement)
 export const EVENTS = [
-  { key: "timer_start", sensor: "timer", tokens: ["name", "duration"], on: true, icon: "enceinte_allumee", color: "turquoise", effect: "fondu" },
+  { key: "timer_start", sensor: "timer", tokens: ["name", "duration"], on: true, icons: ["minuteur", "enceinte_allumee"], color: "turquoise", effect: "fondu" },
   // pendant un minuteur, toutes les "every" minutes : le temps qui reste
-  { key: "timer_left", sensor: "timer", tokens: ["name", "remaining"], on: false, icon: "enceinte_allumee", color: "turquoise", effect: "fondu", every: 1 },
-  { key: "timer_done", sensor: "timer", tokens: ["name"], on: true, icon: "cuisson_terminee", color: "orange", effect: "fondu", prio: true },
-  { key: "timer_cancel", sensor: "timer", tokens: ["name"], on: false, icon: "enceinte_eteinte", color: "blanc", effect: "fondu" },
-  { key: "reminder", sensor: "reminder", tokens: ["text"], on: true, icon: "courrier_recu", color: "jaune", effect: "defile" },
-  { key: "alarm", sensor: "alarm", tokens: ["time"], on: false, icon: "mode_nuit_active", color: "ambre", effect: "fondu" },
-  { key: "music", sensor: "media", tokens: ["title", "artist"], on: false, icon: "enceinte_allumee", color: "violet", effect: "defile" },
+  { key: "timer_left", sensor: "timer", tokens: ["name", "remaining"], on: false, icons: ["minuteur", "enceinte_allumee"], color: "turquoise", effect: "fondu", every: 1 },
+  { key: "timer_done", sensor: "timer", tokens: ["name"], on: true, icons: ["minuteur_termine", "cuisson_terminee"], color: "orange", effect: "fondu", prio: true },
+  { key: "timer_cancel", sensor: "timer", tokens: ["name"], on: false, icons: ["chronometre", "enceinte_eteinte"], color: "blanc", effect: "fondu" },
+  { key: "reminder", sensor: "reminder", tokens: ["text"], on: true, icons: ["rappel", "courrier_recu"], color: "jaune", effect: "defile" },
+  { key: "alarm", sensor: "alarm", tokens: ["time"], on: false, icons: ["reveil", "mode_nuit_active"], color: "ambre", effect: "fondu" },
+  { key: "music", sensor: "media", tokens: ["title", "artist"], on: false, icons: ["musique", "enceinte_allumee"], color: "violet", effect: "defile" },
+  // chaque phrase dite a Alexa (texte "last_called_summary" d'Alexa Media Player, 2 a 10 s apres), comme des sous-titres
+  { key: "voice", sensor: "media", tokens: ["said"], on: false, icons: ["enceinte_allumee"], color: "turquoise", effect: "defile", spoken: true },
+  // une phrase qui commence par le mot de depart ("Alexa, affiche bonjour") : le panneau affiche la suite
+  { key: "dictation", sensor: "media", tokens: ["said"], on: false, icons: ["message_recu", "courrier_recu"], color: "jaune", effect: "defile", spoken: true },
 ];
-export const TOKENS = ["name", "duration", "remaining", "text", "time", "title", "artist"];
+const iconPath = (name) => `Icones/${name}.gif`;
+
+// phrases a ne pas afficher : liste en minuscules, sans vides ("stop, chut" -> ["stop", "chut"])
+export const skipList = (text) => String(text || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+// mot de depart de la dictee, en minuscules (celui de la langue s'il est vide)
+export const keywordOf = (e, t) => (String((e && e.keyword) || "").trim() || t.ax_keyword_default || "").toLowerCase();
+
+// meilleure icone de l'evenement presente sur le panneau ("" si aucune)
+export function bestIcon(ev, icons) {
+  for (const name of ev.icons) if (icons.includes(iconPath(name))) return iconPath(name);
+  return "";
+}
+export const TOKENS = ["name", "duration", "remaining", "text", "time", "title", "artist", "said"];
 export const EVERY = [1, 2, 5, 10];           // "temps restant" : toutes les X minutes
 const PAGED = ["monte", "descend", "lettres", "pluie", "fondu"];   // effets en pages (deux lignes possibles)
 export const ID_PREFIX = "orbitdmd_alexa_";
@@ -53,15 +71,22 @@ export const isAlexa = (cfg) => !!(cfg && cfg.variables && cfg.variables.orbitdm
 
 // reglages de depart : evenements par defaut, textes de la langue, Echo coches
 export function defaultSettings(t, devices, panelDevice, icons) {
-  const has = (g) => icons.includes(g);
   const events = {};
   for (const ev of EVENTS) {
-    const icon = `Icones/${ev.icon}.gif`;
-    events[ev.key] = { on: ev.on, text: t[`ax_text_${ev.key}`], icon: has(icon) ? icon : (icons[0] || ""),
-      color: ev.color, effect: ev.effect, prio: !!ev.prio, font: "", size: 0, lines: 1, speed: null, passes: null, every: ev.every || 0 };
+    events[ev.key] = { on: ev.on, text: t[`ax_text_${ev.key}`], icon: bestIcon(ev, icons) || icons[0] || "",
+      color: ev.color, effect: ev.effect, prio: !!ev.prio, font: "", size: 0, lines: 1, speed: null, passes: null, every: ev.every || 0,
+      skip: t.ax_skip_default || "", keyword: t.ax_keyword_default || "", reply: false };
   }
   return { device: panelDevice, echos: devices.filter((d) => d.echo).map((d) => d.id), room: false,
-    quiet: false, quietFrom: "23:00", quietTo: "07:00", events };
+    quiet: false, quietFrom: "23:00", quietTo: "07:00", events, upgraded: [] };
+}
+
+// icone enregistree = une icone de remplacement d'avant, et une meilleure est maintenant sur le panneau :
+// la meilleure est proposee (elle ne remplace pas une icone choisie a la main)
+function upgradeIcon(ev, saved, icons) {
+  const best = bestIcon(ev, icons);
+  const rank = (g) => ev.icons.findIndex((name) => iconPath(name) === g);
+  return best && rank(saved) > rank(best) ? best : "";
 }
 
 // reglages relus dans les automatisations Alexa existantes (un evenement absent = desactive)
@@ -82,7 +107,12 @@ export function settingsFrom(configs, t, devices, panelDevice, icons) {
       color: m.color || s.events[m.event].color, effect: m.effect || s.events[m.event].effect, prio: !!m.prio,
       font: m.font ? String(m.font) : "", size: Number(m.size) || 0, lines: Number(m.lines) === 2 ? 2 : 1,
       speed: m.speed ? Number(m.speed) : null, passes: m.passes ? Number(m.passes) : null,
-      every: EVERY.includes(Number(m.every)) ? Number(m.every) : s.events[m.event].every });
+      every: EVERY.includes(Number(m.every)) ? Number(m.every) : s.events[m.event].every,
+      skip: m.skip != null ? String(m.skip) : s.events[m.event].skip, keyword: m.keyword ? String(m.keyword) : s.events[m.event].keyword,
+      reply: !!m.reply });
+    const ev = EVENTS.find((x) => x.key === m.event);
+    const better = upgradeIcon(ev, s.events[m.event].icon, icons);
+    if (better) { s.events[m.event].icon = better; s.upgraded.push(m.event); }
   }
   return s;
 }
@@ -108,8 +138,16 @@ export function textTemplate(text) {
   return s;
 }
 
+// Jinja : "said" = la derniere phrase dite a l'appareil, "low" la meme en minuscules
+// (Alexa ecrit "c' est" : l'espace apres l'apostrophe est retire)
+const SAID = "{%- set said = (trigger.to_state.attributes.get('last_called_summary') or '') | string | trim | replace(\"' \", \"'\") -%}{%- set low = said | lower -%}";
+// une vraie nouvelle phrase : son heure avance et date de moins de 2 minutes (pas un retour apres redemarrage)
+const FRESH = "{{ trigger.from_state is not none and trigger.to_state.attributes.get('last_called_summary')"
+  + " and (trigger.to_state.attributes.get('last_called_timestamp') or 0) | int(0) > (trigger.from_state.attributes.get('last_called_timestamp') or 0) | int(0)"
+  + " and (now().timestamp() * 1000 - ((trigger.to_state.attributes.get('last_called_timestamp') or 0) | int(0))) < 120000 }}";
+
 // valeurs calculees au moment de l'alerte, selon l'evenement (Jinja, place avant le texte)
-function prelude(key, t, entities) {
+function prelude(key, t, entities, ev) {
   const word = jstr(t.ax_word_timer);
   const room = "{%- set ax_room = area_name(trigger.entity_id) or device_attr(device_id(trigger.entity_id), 'name_by_user') or device_attr(device_id(trigger.entity_id), 'name') or '' -%}";
   const P = {
@@ -139,6 +177,11 @@ function prelude(key, t, entities) {
     reminder: "{%- set ax_text = state_attr(trigger.entity_id, 'reminder') or '' -%}",
     alarm: "{%- set ax_time = now().strftime('%H:%M') -%}",
     music: "{%- set ax_title = trigger.to_state.attributes.get('media_title') or '' -%}{%- set ax_artist = trigger.to_state.attributes.get('media_artist') or '' -%}",
+    // la phrase, avec une majuscule ; la reponse d'Alexa (vide si elle n'a rien dit)
+    voice: SAID + "{%- set ax_said = said[:1] | upper ~ said[1:] -%}"
+      + "{%- set ax_reply = (trigger.to_state.attributes.get('last_called_response') or '') | string | trim -%}",
+    // la suite de la phrase, sans le mot de depart
+    dictation: SAID + `{%- set rest = said[(${jstr(keywordOf(ev, t))} | length):] | trim -%}{%- set ax_said = rest[:1] | upper ~ rest[1:] -%}`,
   };
   if (key === "timer_left") return P[key] + "{%- set ax_room = area_name(best) or device_attr(device_id(best), 'name_by_user') or device_attr(device_id(best), 'name') or '' if best else '' -%}";
   return room + P[key];
@@ -155,11 +198,26 @@ function nearest(entities) {
 // modele complet du message : valeurs, piece (option), texte ; espaces en trop retires
 export function messageTemplate(key, ev, settings, t, entities = []) {
   const roomPart = settings.room ? "{{ ax_room ~ ' : ' if ax_room else '' }}" : "";
-  return `${prelude(key, t, entities)}{%- set out -%}${roomPart}${textTemplate(ev.text)}{%- endset -%}{{ out | regex_replace('\\s+', ' ') | trim }}`;
+  const replyPart = key === "voice" && ev.reply ? "{{ (' : ' ~ ax_reply) if ax_reply else '' }}" : "";
+  return `${prelude(key, t, entities, ev)}{%- set out -%}${roomPart}${textTemplate(ev.text)}${replyPart}{%- endset -%}{{ out | regex_replace('\\s+', ' ') | trim }}`;
 }
 
 // declencheurs et conditions d'un evenement, pour les entites des appareils coches
-function triggerPart(key, entities, ev) {
+function triggerPart(key, entities, ev, settings, t) {
+  if (key === "voice" || key === "dictation") {
+    const kw = jstr(keywordOf(ev, t));
+    const dict = settings.events.dictation;
+    const dkw = jstr(keywordOf(dict, t));
+    // dictee : la phrase commence par le mot de depart et a une suite ; sous-titres : pas une phrase a ignorer,
+    // ni une dictee (deja affichee par l'evenement Dictee quand il est actif)
+    const test = key === "dictation" ? `${kw} != '' and low.startswith(${kw} ~ ' ')`
+      : `low not in [${skipList(ev.skip).map(jstr).join(", ")}]`
+        + (dict && dict.on ? ` and not (${dkw} != '' and (low == ${dkw} or low.startswith(${dkw} ~ ' ')))` : "");
+    return {
+      // chaque appareil garde l'heure de sa derniere phrase : elle change a chaque phrase, meme repetee
+      triggers: [{ trigger: "state", entity_id: entities, attribute: "last_called_timestamp" }],
+      conditions: [{ condition: "template", value_template: FRESH }, { condition: "template", value_template: `${SAID}{{ ${test} }}` }] };
+  }
   if (key === "timer_left") return {
     triggers: [{ trigger: "time_pattern", minutes: `/${ev.every || 1}` }],
     conditions: [{ condition: "template", value_template: `${nearest(entities)}{{ best is not none }}` }] };
@@ -186,7 +244,7 @@ export function alexaConfigs(settings, devices, t) {
     const e = settings.events[ev.key];
     const entities = chosen.map((d) => d[ev.sensor]).filter(Boolean);
     if (!e.on || !entities.length) { remove.push(id); continue; }
-    const { triggers, conditions } = triggerPart(ev.key, entities, e);
+    const { triggers, conditions } = triggerPart(ev.key, entities, e, settings, t);
     if (settings.quiet && !e.prio) {
       conditions.push({ condition: "not", conditions: [{ condition: "time", after: `${settings.quietFrom}:00`, before: `${settings.quietTo}:00` }] });
     }
@@ -196,7 +254,8 @@ export function alexaConfigs(settings, devices, t) {
       variables: { orbitdmd: { kind: "alexa", event: ev.key, echos: settings.echos.slice(), room: settings.room,
         quiet: settings.quiet, quiet_from: settings.quietFrom, quiet_to: settings.quietTo,
         text: e.text, icon: e.icon, color: e.color, effect: e.effect, prio: e.prio, display: "icon",
-        font: e.font, size: e.size, lines: e.lines, speed: e.speed, passes: e.passes, every: e.every } },
+        font: e.font, size: e.size, lines: e.lines, speed: e.speed, passes: e.passes, every: e.every,
+        ...(ev.spoken ? { skip: e.skip, keyword: e.keyword, reply: !!e.reply } : {}) } },
       triggers, conditions, actions: [{ action: "orbitdmd.notify", data }],
       ...(ev.key === "timer_left" ? { mode: "single", max_exceeded: "silent" } : { mode: "queued", max: 5 }),
     };
@@ -218,10 +277,11 @@ export function notifyData(e, device, message) {
 // texte d'exemple (apercu, bouton Tester) : jetons remplaces par des valeurs d'exemple
 export function sampleText(key, ev, settings, t, roomName) {
   const values = { name: t.ax_sample_name, duration: t.ax_sample_duration, remaining: t.ax_sample_remaining, text: t.ax_sample_text, time: "07:30",
-    title: t.ax_sample_title, artist: t.ax_sample_artist };
+    title: t.ax_sample_title, artist: t.ax_sample_artist, said: key === "dictation" ? t.ax_sample_dictation : t.ax_sample_said };
   let s = String(ev.text || "");
   for (const k of TOKENS) s = s.split(`{${k}}`).join(values[k]);
   s = s.replace(/[{}]/g, "");
+  if (key === "voice" && ev.reply) s = `${s} : ${t.ax_sample_reply}`;
   if (settings.room && roomName) s = `${roomName} : ${s}`;
   return s.replace(/\s+/g, " ").trim();
 }

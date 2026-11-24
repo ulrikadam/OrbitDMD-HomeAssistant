@@ -270,6 +270,17 @@ img.gif:not([src]) { visibility:hidden; }
 .axrow { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
 .axpv { width:320px; max-width:100%; flex:none; }
 .axnew { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+/* menu Alexa : evenements et appareils repliables */
+.axhead { display:flex; align-items:center; gap:12px; }
+.axhead > .grow { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.axmini { width:176px; flex:none; cursor:pointer; }
+button.fold { flex:none; width:38px; height:38px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+button.fold svg { fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; transition:transform .15s; }
+button.fold[aria-expanded="true"] svg { transform:rotate(90deg); }
+.foldh { display:flex; align-items:center; gap:12px; margin:18px 0 8px; }
+.foldh h3 { margin:0; }
+.foldh small { flex:1; color:var(--secondary-text-color); }
+@media (max-width:600px) { .axmini { width:112px; } }
 /* alertes */
 .alerts { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
 .alert { display:grid; grid-template-columns:200px 1fr auto; gap:14px; align-items:center; }
@@ -1204,7 +1215,9 @@ class OrbitDMDPanel extends HTMLElement {
     const panel = this._data.panels[0].device_id;
     const s = AX.settingsFrom(Object.values(this._configs), this._t, this._axDevices, panel, this._axIcons(panel));
     for (const id of add) if (!s.echos.includes(id)) s.echos.push(id);
-    this._ax = { settings: s, pick: null };
+    // tout est replie, sauf les appareils la premiere fois (aucune alerte Alexa encore) ou un appareil a ajouter
+    const first = !Object.values(this._configs).some(AX.isAlexa);
+    this._ax = { settings: s, pick: null, open: new Set(), devOpen: first || add.length > 0 };
     this._go("alexa");
   }
 
@@ -1261,11 +1274,20 @@ class OrbitDMDPanel extends HTMLElement {
     const room = this._axRoom();
     const colorOpts = (sel) => Object.keys(COLORS).map((k) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.colors[k])}</option>`).join("");
     const effectOpts = (sel) => EFFECTS.map((k) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(t.effects[k])}</option>`).join("");
+    const open = this._ax.open;
+    // petite fleche : deplier / replier
+    const foldBtn = (attrs, isOpen) => `<button class="fold" ${attrs} aria-expanded="${isOpen}" title="${esc(isOpen ? t.ax_fold : t.ax_unfold)}">`
+      + `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`;
     const events = AX.EVENTS.map((ev) => {
-      const k = ev.key, e = s.events[k];
-      const head = `<label class="lead"><input type="checkbox" data-ax="on" data-ev="${k}" ${e.on ? "checked" : ""}><b>${esc(t[`ax_ev_${k}`])}</b></label>
+      const k = ev.key, e = s.events[k], isOpen = open.has(k);
+      const title = `<label class="lead"><input type="checkbox" data-ax="on" data-ev="${k}" ${e.on ? "checked" : ""}><b>${esc(t[`ax_ev_${k}`])}</b></label>
         <small class="muted">${esc(t[`ax_when_${k}`])}</small>`;
-      if (!e.on) return `<div class="card axev off">${head}</div>`;
+      if (!e.on) return `<div class="card axev off"><div class="axhead"><div class="grow">${title}</div></div></div>`;
+      // replie : le titre, un petit apercu et la fleche
+      if (!isOpen) return `<div class="card axev"><div class="axhead"><div class="grow">${title}</div>
+        <div class="screen axmini" id="axpv_${k}" data-a="axfold" data-ev="${k}" title="${esc(t.ax_unfold)}">${this._marquee(this._axDraft(k, e, s, room))}</div>
+        ${foldBtn(`data-a="axfold" data-ev="${k}"`, false)}</div></div>`;
+      const head = `<div class="axhead"><div class="grow">${title}</div>${foldBtn(`data-a="axfold" data-ev="${k}"`, true)}</div>`;
       const st = this._styleOpts(e, s.device);
       const toks = ev.tokens.map((tok) => `<button data-a="axtok" data-ev="${k}" data-k="${tok}">+ ${esc(t[`ax_tok_${tok}`])}</button>`).join("");
       const icons = this._ax.pick === k ? `<div class="icons">${this._axIcons(s.device).map((g) => `<button class="ico ${e.icon === g ? "on" : ""}"
@@ -1276,6 +1298,9 @@ class OrbitDMDPanel extends HTMLElement {
           <div class="grow">
             <label class="field">${t.text}<input type="text" maxlength="200" data-ax="text" data-ev="${k}" value="${esc(e.text)}"></label>
             <div class="bar">${toks}</div>
+            ${k === "dictation" ? `<label class="field">${t.ax_keyword}<input type="text" maxlength="40" data-ax="keyword" data-ev="${k}" value="${esc(e.keyword)}"></label>` : ""}
+            ${k === "voice" ? `<label class="field">${t.ax_skip}<input type="text" maxlength="300" data-ax="skip" data-ev="${k}" value="${esc(e.skip)}"></label>
+              <label class="opt"><input type="checkbox" data-ax="reply" data-ev="${k}" ${e.reply ? "checked" : ""}>${esc(t.ax_reply)}</label>` : ""}
             <div class="cols">
               ${ev.every ? `<label class="field">${t.ax_every}<select data-ax="every" data-ev="${k}">${AX.EVERY.map((m) =>
                 `<option value="${m}" ${e.every === m ? "selected" : ""}>${esc(fmt(t.ax_every_n, m))}</option>`).join("")}</select></label>` : ""}
@@ -1295,8 +1320,11 @@ class OrbitDMDPanel extends HTMLElement {
           </div>
         </div></div>`;
     }).join("");
-    return `<h2>${t.ax_title}</h2><p class="help">${esc(t.ax_help)}</p>${panelSel}
-      <h3>${t.ax_devices}</h3><p class="help">${esc(t.ax_devices_help)}</p><div class="axdevs">${devs}</div>
+    const upgraded = (s.upgraded || []).length ? `<div class="banner">${esc(t.ax_new_icons)}</div>` : "";
+    const devCount = esc(fmt(t.ax_dev_count, s.echos.filter((id) => devices.some((d) => d.id === id)).length, devices.length));
+    return `<h2>${t.ax_title}</h2><p class="help">${esc(t.ax_help)}</p>${upgraded}${panelSel}
+      <div class="foldh"><h3>${t.ax_devices}</h3><small>${devCount}</small>${foldBtn(`data-a="axfolddev"`, this._ax.devOpen)}</div>
+      ${this._ax.devOpen ? `<p class="help">${esc(t.ax_devices_help)}</p><div class="axdevs">${devs}</div>` : ""}
       <h3>${t.ax_events}</h3>${events}
       <h3>${t.ax_options}</h3>
       <label class="opt"><input type="checkbox" data-ax="room" ${s.room ? "checked" : ""}>${esc(t.ax_room)}</label>
@@ -1316,7 +1344,8 @@ class OrbitDMDPanel extends HTMLElement {
         s.echos = el.checked ? s.echos.concat(el.dataset.dev) : s.echos.filter((x) => x !== el.dataset.dev);
         for (const ev of AX.EVENTS) this._axPreview(ev.key);      // la piece d'exemple peut changer
         return;
-      case "on": e.on = el.checked; this._render(); return;
+      // un evenement qu'on active s'ouvre pour montrer ses reglages
+      case "on": e.on = el.checked; if (e.on) this._ax.open.add(k); else this._ax.open.delete(k); this._render(); return;
       case "text": e.text = el.value; break;
       case "color": e.color = el.value; break;
       case "effect":
@@ -1334,6 +1363,9 @@ class OrbitDMDPanel extends HTMLElement {
       case "size": e.size = el.value ? Number(el.value) : 0; break;
       case "every": e.every = Number(el.value) || 1; return;
       case "prio": e.prio = el.checked; break;
+      case "skip": e.skip = el.value; return;
+      case "keyword": e.keyword = el.value; return;
+      case "reply": e.reply = el.checked; break;
       case "room": s.room = el.checked; for (const ev of AX.EVENTS) this._axPreview(ev.key); return;
       case "quiet": s.quiet = el.checked; this._render(); return;
       case "qfrom": if (el.value) s.quietFrom = el.value.slice(0, 5); return;
@@ -1388,7 +1420,8 @@ class OrbitDMDPanel extends HTMLElement {
   // reglages d'affichage d'une alerte Alexa enregistree
   _axEvent(m) {
     return { text: m.text, icon: m.icon, color: m.color, effect: m.effect, prio: !!m.prio, font: m.font || "", size: Number(m.size) || 0,
-      lines: Number(m.lines) === 2 ? 2 : 1, speed: m.speed ? Number(m.speed) : null, passes: m.passes ? Number(m.passes) : null };
+      lines: Number(m.lines) === 2 ? 2 : 1, speed: m.speed ? Number(m.speed) : null, passes: m.passes ? Number(m.passes) : null,
+      reply: !!m.reply, keyword: m.keyword || "", skip: m.skip || "" };
   }
 
   // une alerte Alexa dans la liste : apercu, quand, appareils ; "Modifier" ouvre le menu Alexa
@@ -1604,6 +1637,12 @@ class OrbitDMDPanel extends HTMLElement {
       case "alexa": await this._openAlexa(); break;
       case "axback": this._go("home"); break;
       case "axsave": await this._axSave(); break;
+      case "axfold": {
+        const o = this._ax.open, k = b.dataset.ev;
+        if (o.has(k)) { o.delete(k); if (this._ax.pick === k) this._ax.pick = null; } else o.add(k);
+        this._render(); break;
+      }
+      case "axfolddev": this._ax.devOpen = !this._ax.devOpen; this._render(); break;
       case "axpick": this._ax.pick = this._ax.pick === b.dataset.ev ? null : b.dataset.ev; this._render(); break;
       case "axicon": this._ax.settings.events[b.dataset.ev].icon = b.dataset.g; this._ax.pick = null; this._render(); break;
       case "axtok": {
